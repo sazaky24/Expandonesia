@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: excel-backend
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    restart: unless-stopped
+    networks:
+      - excel-net
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: excel-frontend
+    ports:
+      - "8501:8501"
+    expose:
+      - "8501"
+    environment:
+      # Container name resolves to the backend service inside the compose network.
+      API_URL: "http://backend:8000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - excel-net
+
+networks:
+  excel-net:
+    driver: bridge
