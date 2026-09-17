@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from map_translator import remaster_map
 
-app = FastAPI(title="Excel Matrix Unpivoter V3")
+app = FastAPI(title="FastWork API")
 
 app.add_middleware(
     CORSMiddleware,
