@@ -134,6 +134,41 @@ Tidak ada file yang pernah ditulis ke disk — sepenuhnya stateless.
 | streamlit | 1.41.1 | Frontend |
 | requests | 2.32.3 | HTTP client frontend |
 
+## Deploy ke Produksi
+
+Project ini adalah **monorepo**. Frontend web (Vite + React) di-deploy ke **Netlify**,
+backend FastAPI di-deploy ke **Render** — jangan buat `requirements.txt`/`main.py` baru di root repo.
+
+### Backend → Render
+
+Paling mudah via Blueprint (file `render.yaml` sudah disiapkan):
+
+1. Push repo ini ke GitHub, lalu di Render: **New + → Blueprint** → pilih repo.
+   Blueprint sudah mengatur `rootDir: backend`, Runtime **Docker** (font DejaVu untuk
+   `/translate-map` ikut ter-install via Dockerfile), dan health check `/health`.
+
+Jika membuat Web Service manual, wajib mengatur:
+
+| Setting | Nilai | Alasan |
+|---------|-------|--------|
+| Root Directory | `backend` | Monorepo — kode ada di subfolder, bukan root |
+| Runtime | **Docker** | Native Python di Render tidak punya font DejaVu (peta jadi jelek) |
+| Build Command | `pip install -r requirements.txt` | — |
+| Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` | `$PORT` di-inject Render |
+| Env `CORS_ORIGINS` | `https://<site>.netlify.app` | Batasi CORS ke domain frontend |
+
+Versi Python native (jika tidak pakai Docker) dipin via `backend/.python-version`.
+
+Verifikasi: buka `https://<service>.onrender.com/` (JSON status) dan `/docs` (Swagger UI).
+Catatan free tier: service tidur setelah ±15 menit idle; request pertama butuh 30–60 detik.
+
+### Frontend → Netlify
+
+1. `netlify.toml` di root sudah mengatur: base `frontend-react`, build `npm run build`, publish `dist`.
+2. Set env var di Netlify (**Site configuration → Environment variables**):
+   - `VITE_API_URL` = URL backend Render (mis. `https://fastwork-backend.onrender.com`)
+3. Baru **Trigger deploy** — Vite membaca env var saat *build*, bukan saat runtime.
+
 ## Lisensi
 
 Internal project — bebas digunakan dan dimodifikasi.
