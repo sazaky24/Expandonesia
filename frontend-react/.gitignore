@@ -12,11 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Environment variables (jangan di-commit; VITE_API_URL di-set via dashboard Netlify)
-.env
-.env.local
-.env.*.local
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

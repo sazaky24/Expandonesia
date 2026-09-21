@@ -18,5 +18,4 @@ COPY main.py map_translator.py ./
 EXPOSE 8000
 
 # Stateless: uvicorn runs the FastAPI app; no volumes / persisted state.
-# Render (Docker runtime) meng-inject $PORT; fallback ke 8000 untuk dev lokal.
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,6 +1,0 @@
-# Konfigurasi deploy Netlify
-# Web app (Vite + React) ada di subfolder frontend-react/
-[build]
-  base = "frontend-react"
-  command = "npm run build"
-  publish = "dist"

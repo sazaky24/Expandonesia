@@ -11,10 +11,7 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 
-// URL backend diambil dari environment variable (di-set saat build oleh Vite).
-// Lokal: file .env berisi VITE_API_URL=http://localhost:8000
-// Produksi: set VITE_API_URL di dashboard Netlify (Site configuration > Environment variables)
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = "http://localhost:8000";
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('excel');

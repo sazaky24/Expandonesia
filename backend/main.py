@@ -1,5 +1,4 @@
 import io
-import os
 import re
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -10,31 +9,15 @@ from map_translator import remaster_map
 
 app = FastAPI(title="FastWork API")
 
-# Origin yang diizinkan diambil dari env CORS_ORIGINS (dipisah koma),
-# contoh di Render: CORS_ORIGINS=https://namaprojek.netlify.app
-# Kosong -> fallback ke "*" (dev lokal / sebelum URL Netlify final).
-_cors_origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_cors_origins or ["*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-
-@app.get("/")
-def root() -> dict:
-    """Endpoint root untuk verifikasi cepat via browser (hindari 404 saat cek URL)."""
-    return {
-        "status": "ok",
-        "service": "FastWork API",
-        "docs": "/docs",
-        "health": "/health",
-    }
 
 
 @app.get("/health")
