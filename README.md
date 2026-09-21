@@ -159,6 +159,11 @@ Jika membuat Web Service manual, wajib mengatur:
 
 Versi Python native (jika tidak pakai Docker) dipin via `backend/.python-version`.
 
+**Alternatif gratis tanpa kartu kredit:** jika Render meminta payment method (Blueprint
+memang mewajibkannya), gunakan **Hugging Face Spaces (Docker)** — panduan lengkap ada di
+`backend/README.md`. Koyeb dan Fly.io saat ini juga mewajibkan kartu; Railway hanya kredit
+$5 sekali pakai.
+
 Verifikasi: buka `https://<service>.onrender.com/` (JSON status) dan `/docs` (Swagger UI).
 Catatan free tier: service tidur setelah ±15 menit idle; request pertama butuh 30–60 detik.
 
