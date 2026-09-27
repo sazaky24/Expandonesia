@@ -1,3 +1,101 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------------------------------------------------------------- mobile ---- */
+/* Keyframes live outside layers so PostCSS always emits them. */
+@keyframes fw-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fw-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fw-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-slate-100 text-slate-900 antialiased;
+    min-height: 100vh;
+    /* No rubber-band / pull-to-refresh while scrolling the app shell. */
+    overscroll-behavior-y: none;
+  }
+
+  /* iOS Safari zooms in when a control below 16px gets focus, so keep form
+     controls at 16px and never override them with text-sm in the markup. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  button,
+  [role='button'],
+  label[for] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  img {
+    -webkit-user-drag: none;
+  }
+}
+
+@layer utilities {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .h-dvh {
+    height: 100dvh;
+  }
+
+  .min-h-dvh {
+    min-height: 100dvh;
+  }
+
+  /* Keeps the last card clear of the fixed bottom tab bar + home indicator. */
+  .pb-tabbar {
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  .animate-slide-down {
+    animation: fw-slide-down 0.22s ease-out both;
+  }
+
+  .animate-sheet-up {
+    animation: fw-sheet-up 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  .animate-fade-in {
+    animation: fw-fade-in 0.2s ease-out both;
+  }
+}

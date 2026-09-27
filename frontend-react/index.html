@@ -1,13 +1,79 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover"
+    />
+    <title>FastWork Mobile — Translate Peta &amp; Data Excel</title>
+    <meta
+      name="description"
+      content="Terjemahkan legenda peta curah hujan ke bahasa Inggris dan ubah file Excel matriks menjadi tabel datar, langsung dari HP."
+    />
+    <meta name="color-scheme" content="light" />
+    <meta name="format-detection" content="telephone=no" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend-react</title>
+    <link rel="mask-icon" href="/favicon.svg" color="#2563eb" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- PWA / mobile shell -->
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="FastWork" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <style>
+      /* First-paint splash, replaced as soon as React mounts. */
+      .fw-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        background: #f1f5f9;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      .fw-splash__logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #2563eb, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 26px;
+      }
+      .fw-splash__title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: #0f172a;
+      }
+      .fw-splash__hint {
+        margin: 0;
+        font-size: 12px;
+        color: #64748b;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="fw-splash">
+        <div class="fw-splash__logo">☁</div>
+        <p class="fw-splash__title">FastWork Mobile</p>
+        <p class="fw-splash__hint">Menyiapkan aplikasi…</p>
+      </div>
+    </div>
+    <noscript>
+      Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript lalu muat ulang halaman.
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
