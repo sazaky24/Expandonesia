@@ -11,6 +11,7 @@ import { transformExcelLocally } from '../../lib/localExcel'
 const MAX_BYTES = 50 * 1024 * 1024
 const ACCEPTED = ['.xlsx', '.xls']
 const RESULT_FILENAME = 'data_matang.xlsx'
+const OUTPUT_COLUMNS = ['Kode', 'Produk', 'Negara', 'Pelabuhan', 'Berat', 'Nilai', 'Berat (Ton)']
 
 /**
  * Data Excel — runs 100% inside the phone via ExcelJS (zero backend/PC needed),
