@@ -5,7 +5,7 @@ import { ArrowRightLeft, Camera, Cpu, RotateCcw, Share2, Upload } from 'lucide-r
 import { Notice, Pill, PrimaryButton, ProgressBar, StepCard } from '../../components/ui'
 import { postForm } from '../../lib/api'
 import { saveFile } from '../../lib/download'
-import { currentMonthName, formatBytes } from '../../lib/format'
+import { MONTHS, currentMonthName, formatBytes } from '../../lib/format'
 import { CALIBRATION, remasterMapLocally } from '../../lib/localMap'
 
 const MAX_BYTES = 25 * 1024 * 1024
