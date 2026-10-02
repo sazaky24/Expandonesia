@@ -1,8 +1,10 @@
 /**
- * Local (Client-Side) Excel Unpivoter using ExcelJS.
+ * Local (Client-Side) Excel Unpivoter.
  * Runs 100% in the browser / mobile phone. No backend / PC needed.
+ *
+ * ExcelJS is lazy-loaded (dynamic import) so the initial Pages bundle stays
+ * small — it is only downloaded when the user runs a local transform.
  */
-import ExcelJS from 'exceljs'
 
 function cleanCellValue(val) {
   if (val === null || val === undefined) return ''
@@ -122,6 +124,7 @@ export async function transformExcelLocally(data, onProgress) {
 
   if (onProgress) onProgress(35)
 
+  const { default: ExcelJS } = await import('exceljs')
   const workbook = new ExcelJS.Workbook()
   await workbook.xlsx.load(arrayBuffer)
 

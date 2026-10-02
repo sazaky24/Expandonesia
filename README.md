@@ -298,7 +298,7 @@ Tidak ada file yang pernah ditulis ke disk — sepenuhnya stateless.
 | react / react-dom | 19.2.8 | PWA mobile |
 | vite | 8.3.0 | Build & serve PWA |
 | tailwindcss | 3.4.1 | Styling PWA |
-| axios | 1.20.0 | HTTP client PWA |
+| exceljs | 4.4.0 | Unpivot Excel lokal (lazy-load chunk terpisah) |
 | lucide-react | 1.47.0 | Ikon PWA |
 
 ## Lisensi

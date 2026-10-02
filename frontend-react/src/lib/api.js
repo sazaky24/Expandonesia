@@ -13,10 +13,8 @@
  *
  * Case 2's second branch is what makes start-mobile-tunnel.bat work: one HTTPS
  * tunnel serves both the app and the API, so a phone on another network (or on
- * mobile data) can use the app with no CORS and no mixed-content problems.
+ * Uses native fetch (no axios) to keep the Pages bundle small.
  */
-
-import axios from 'axios'
 
 const STORAGE_KEY = 'fastwork.apiBaseUrl'
 const HTTP_PORT = 8000
@@ -94,79 +92,79 @@ export function resolveApiBaseUrl() {
   return readStoredApiBaseUrl() || autoApiBaseUrl()
 }
 
-/** Turn an axios failure into a sentence a non-technical user can act on. */
-async function readErrorDetail(payload) {
-  let data = payload
-
-  if (typeof Blob !== 'undefined' && payload instanceof Blob) {
-    let raw = ''
+/** Turn a fetch failure / error response into a sentence a user can act on. */
+async function readErrorDetail(response) {
+  if (!response) return ''
+  try {
+    const raw = await response.text()
+    if (!raw) return ''
     try {
-      raw = await payload.text()
-    } catch {
-      return ''
-    }
-    try {
-      data = JSON.parse(raw)
+      const data = JSON.parse(raw)
+      if (typeof data === 'string') return data.slice(0, 300)
+      const detail = data?.detail
+      if (Array.isArray(detail)) {
+        return detail.map((item) => item?.msg || '').filter(Boolean).join('; ')
+      }
+      if (typeof detail === 'string') return detail
+      return raw.slice(0, 300)
     } catch {
       return raw.slice(0, 300)
     }
+  } catch {
+    return ''
   }
-
-  if (typeof data === 'string') return data.slice(0, 300)
-
-  const detail = data?.detail
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) => item?.msg || '')
-      .filter(Boolean)
-      .join('; ')
-  }
-  if (typeof detail === 'string') return detail
-  return ''
 }
 
 export async function describeError(error, baseUrl) {
-  const response = error?.response
   const target = describeTarget(baseUrl)
+  const status = error?.status
 
-  if (response) {
-    if (response.status === 413) return 'File terlalu besar untuk dikirim ke backend.'
-    const detail = await readErrorDetail(response.data)
-    if (detail) return `Backend menolak permintaan (HTTP ${response.status}): ${detail}`
-    if ([500, 502, 503, 504].includes(response.status)) {
-      return `Backend tidak merespons (HTTP ${response.status}) di ${target}. Pastikan jendela "FastWork Backend" masih hidup.`
+  if (typeof status === 'number') {
+    if (status === 413) return 'File terlalu besar untuk dikirim ke backend.'
+    const detail = error?.detail || ''
+    if (detail) return `Backend menolak permintaan (HTTP ${status}): ${detail}`
+    if ([500, 502, 503, 504].includes(status)) {
+      return `Backend tidak merespons (HTTP ${status}) di ${target}. Pastikan jendela "FastWork Backend" masih hidup.`
     }
-    if (response.status === 404) {
+    if (status === 404) {
       return `Endpoint API tidak ditemukan di ${target}. Kalau aplikasi dibuka lewat tunnel, jalankan dengan "npm run preview"/"npm run dev" (bukan static server biasa), atau isi alamat backend manual di Pengaturan.`
     }
-    return `Backend mengembalikan error HTTP ${response.status}.`
+    return `Backend mengembalikan error HTTP ${status}.`
   }
 
-  if (error?.code === 'ECONNABORTED' || error?.code === 'ETIMEDOUT') {
+  if (error?.name === 'AbortError' || error?.code === 'ECONNABORTED') {
     return `Permintaan ke ${target} melebihi batas waktu. Coba lagi.`
   }
 
-  if (error?.request) {
+  if (error instanceof TypeError) {
     return `Tidak bisa menghubungi backend di ${target}. Pastikan FastAPI sudah jalan (dan, untuk akses LAN, HP ada di jaringan yang sama dengan PC).`
   }
 
   return error?.message || 'Terjadi kesalahan yang tidak diketahui.'
 }
 
-/** POST a multipart form and return the binary response as a Blob. */
+/**
+ * POST a multipart form and return the binary response as a Blob.
+ * fetch has no upload-progress events, so onUploadProgress is accepted
+ * but ignored (the UI shows an indeterminate bar instead).
+ */
 export async function postForm(path, formData, { onUploadProgress } = {}) {
   const baseUrl = resolveApiBaseUrl()
+  void onUploadProgress
 
+  let response
   try {
-    const response = await axios.post(`${baseUrl}${path}`, formData, {
-      responseType: 'blob',
-      timeout: 0, // big workbooks / images may take a while on a phone network
-      onUploadProgress,
-    })
-    return response.data
+    response = await fetch(`${baseUrl}${path}`, { method: 'POST', body: formData })
   } catch (error) {
     throw new Error(await describeError(error, baseUrl))
   }
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response)
+    throw new Error(await describeError({ status: response.status, detail }, baseUrl))
+  }
+
+  return response.blob()
 }
 
 /** Liveness probe used by the connection badge in Pengaturan. */
@@ -174,12 +172,25 @@ export async function checkHealth(baseUrl) {
   const target = normalizeBaseUrl(baseUrl) || autoApiBaseUrl()
 
   try {
-    const response = await axios.get(`${target}/health`, { timeout: 6000 })
-    const ok = response.status === 200 && response.data?.status === 'ok'
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), 6000)
+    let response
+    try {
+      response = await fetch(`${target}/health`, { signal: controller.signal })
+    } finally {
+      window.clearTimeout(timer)
+    }
+    let data = null
+    try {
+      data = await response.json()
+    } catch {
+      data = null
+    }
+    const ok = response.ok && data?.status === 'ok'
     return {
       ok,
       message: ok
-        ? `Backend aktif di ${describeTarget(target)}${response.data?.service ? ` (${response.data.service})` : ''}.`
+        ? `Backend aktif di ${describeTarget(target)}${data?.service ? ` (${data.service})` : ''}.`
         : `Backend di ${describeTarget(target)} menjawab, tetapi status health bukan "ok".`,
     }
   } catch (error) {

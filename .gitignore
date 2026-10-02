@@ -23,3 +23,19 @@ Thumbs.db
 # Logs
 *.log
 pip_log*.txt
+
+# PyInstaller build output — jangan commit (30-70MB). Build lokal via desktop/build_exe.bat
+build/
+dist/
+*.exe
+*.pkg
+*.toc
+*.pyz
+base_library.zip
+warn-*.txt
+xref-*.html
+
+# Node / Vite
+node_modules/
+frontend-react/dist/
+frontend-react/node_modules/

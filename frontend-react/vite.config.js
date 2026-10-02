@@ -82,5 +82,19 @@ export default defineConfig({
   build: {
     target: 'es2020',
     sourcemap: false,
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        // ExcelJS (~800KB) hanya dipakai saat transformasi lokal — pisahkan
+        // jadi chunk sendiri agar halaman pertama Pages tetap ringan.
+        // (Vite 8 / Rolldown: manualChunks harus fungsi.)
+        manualChunks: (id) => {
+          if (id.includes('node_modules/exceljs') || id.includes('node_modules\\exceljs')) {
+            return 'exceljs'
+          }
+          return undefined
+        },
+      },
+    },
   },
 })
