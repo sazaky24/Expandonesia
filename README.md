@@ -25,6 +25,19 @@ npm run build        # output to dist/
 npm run preview      # preview production build at http://localhost:4173
 ```
 
+## Windows Desktop App
+
+The React app can also be packaged as a Windows installer using Electron:
+
+```bash
+cd frontend-react
+npm install
+npm run desktop:installer
+```
+
+The NSIS installer is written to `frontend-react/release/`. To build and open the
+desktop version without creating an installer, use `npm run desktop:run`.
+
 ## Project Structure
 
 ```

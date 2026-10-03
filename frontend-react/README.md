@@ -18,6 +18,23 @@ npm run preview   # serve hasil build di http://<ip-lan>:4173
 npm run lint      # oxlint
 ```
 
+## Aplikasi desktop Windows
+
+Installer Windows dibuat menggunakan Electron dan NSIS:
+
+```bash
+npm install
+npm run desktop:installer
+```
+
+Hasil installer `.exe` tersedia di folder `release/`. Installer menyediakan pilihan
+lokasi pemasangan serta shortcut Start Menu dan Desktop. Untuk menjalankan versi
+desktop tanpa membuat installer, gunakan `npm run desktop:run`.
+
+Fitur translate dan Excel memakai pemrosesan lokal yang sama dengan versi web. OCR
+membutuhkan koneksi internet pertama kali untuk mengambil worker dan data bahasa;
+setelah cache OCR terisi, data yang sudah tersimpan bisa dipakai ulang.
+
 Dari root proyek gunakan `start-mobile.bat` (HTTP) atau `start-mobile-https.bat`
 (HTTPS self-signed) — keduanya menyalakan backend, build, lalu serve sekaligus.
 
