@@ -1,103 +1,61 @@
-# FastWork Mobile — Excel Unpivoter & Map Translator (PWA)
+# FastWork Desktop - Penerjemah Peta dan Pengolah Excel
 
-**100% client-side Progressive Web App** — runs entirely in the browser, no backend required. Deploy to GitHub Pages and use from any phone.
+FastWork Desktop adalah aplikasi Windows untuk menerjemahkan teks pada peta curah hujan dan mengubah data Excel matriks menjadi tabel datar. Kedua fitur diproses di perangkat pengguna melalui aplikasi desktop Electron.
 
-## Features
+## Fitur
 
-| Feature | Implementation | Works Offline |
-|---------|----------------|---------------|
-| **Excel Matrix → Flat Table** | ExcelJS (lazy-loaded) | ✅ Yes |
-| **Weather Map Legend Translate** | Tesseract.js OCR + Canvas redraw | ✅ Yes (after first model download ~4MB) |
+- **Terjemahkan peta**: pilih gambar peta BMKG, deteksi teks panel, lalu simpan hasil terjemahan sebagai gambar.
+- **Olah Excel**: ubah format Excel matriks menjadi tabel datar.
+- **Pemrosesan lokal**: gambar dan file Excel diproses di aplikasi, tidak perlu backend.
 
-## Quick Start (GitHub Pages)
+### Format Excel
 
-1. **Push to GitHub** — GitHub Actions (`.github/workflows/deploy.yml`) auto-builds and deploys `frontend-react/dist` to GitHub Pages on every push to `main`
-2. **Open** `https://<username>.github.io/ProjekAyah/` on your phone
-3. **Install** via browser menu → "Add to Home Screen" / "Install App"
+Fitur Excel mendukung format matriks berikut:
 
-## Local Development
+- Sheet pertama berisi matriks berat: baris negara dan pelabuhan di bagian atas, kode HS di kolom A.
+- Sheet kedua berisi matriks nilai dengan susunan serupa.
+- Sel gabungan pada baris negara ditangani dengan pengisian nilai ke kolom berikutnya.
+- Hasil berupa tabel dengan kolom `Kode`, `Produk`, `Negara`, `Pelabuhan`, `Berat`, `Nilai`, dan `Berat (Ton)`.
 
-```bash
+### Peta cuaca
+
+Fitur peta ditujukan untuk peta curah hujan BMKG GSMaP. Aplikasi mendeteksi panel legenda, menerjemahkan judul dan label yang dikenali, serta menyesuaikan ukuran teks agar tetap berada dalam batas panel. Bagian peta di luar panel dipertahankan.
+
+Pada penggunaan OCR pertama kali, aplikasi mungkin memerlukan koneksi internet untuk mengunduh worker dan data bahasa. Setelah tersimpan di cache, data tersebut dapat digunakan kembali.
+
+## Menjalankan aplikasi
+
+Unduh installer Windows dari halaman [GitHub Releases](https://github.com/sazaky24/ProjekAyah/releases) dan jalankan file `.exe`. Installer menyediakan pilihan lokasi pemasangan serta shortcut Desktop dan Start Menu.
+
+## Membangun installer Windows
+
+Persyaratan: Windows x64, Node.js, dan npm.
+
+```powershell
 cd frontend-react
-npm install
-npm run dev          # http://localhost:5173
-npm run build        # output to dist/
-npm run preview      # preview production build at http://localhost:4173
-```
-
-## Windows Desktop App
-
-The React app can also be packaged as a Windows installer using Electron:
-
-```bash
-cd frontend-react
-npm install
+npm ci
 npm run desktop:installer
 ```
 
-The NSIS installer is written to `frontend-react/release/`. To build and open the
-desktop version without creating an installer, use `npm run desktop:run`.
+Installer NSIS akan dibuat di `frontend-react/release/`. Untuk build dan menjalankan aplikasi tanpa membuat installer:
 
-## Project Structure
-
-```
-.github/workflows/deploy.yml   # GitHub Pages auto-deploy
-frontend-react/                # React 19 + Vite 8 + Tailwind 3 PWA
-  src/
-    features/
-      excel/ExcelUnpivotTool.jsx      # Local Excel unpivot (ExcelJS)
-      translate/TranslateMapTool.jsx  # Local map translate (Tesseract.js + Canvas)
-    lib/
-      localExcel.js        # ExcelJS-based unpivot logic
-      localMap.js          # OCR + redraw pipeline
-      mapOcr.js            # Tesseract.js wrapper
-      mapPanel.js          # Panel detection (bottom info strip)
-      mapEdits.js          # ID→EN vocab + edit planning
-      api.js               # Smart API resolution (for optional backend)
-      download.js          # Web Share API / fallback download
-      pwa.js               # Install prompt, SW registration, online status
-      vocabId.js           # Indonesian→English term mapping
-    components/            # UI: TopBar, TabBar, Toast, SettingsSheet, primitives
-  public/
-    manifest.webmanifest   # PWA manifest
-    sw.js                  # Service worker (cache app shell)
-    icons/                 # PWA icons (generated via scripts/generate_icons.py)
+```powershell
+npm run desktop:run
 ```
 
-## Supported Input Formats
+Workflow [release-desktop.yml](./.github/workflows/release-desktop.yml) dapat membangun installer dan menerbitkannya sebagai GitHub Release saat tag versi `v*` didorong ke GitHub.
 
-### Excel (Coffee import/export format)
-- Sheet 1: Weight matrix (Country row 0, Port row 1, HS codes in col A)
-- Sheet 2: Value matrix (same layout)
-- Merged cells in Country header row handled via forward-fill
+## Pengembangan dan pengujian
 
-### Weather Map (BMKG GSMaP)
-- Precipitation analysis map with Indonesian legend panel at bottom
-- Auto-detects panel location (works on 1280×912 and larger originals)
-- Detects panel columns without mistaking the surrounding image border for a cell boundary
-- Fits translated headings and legend labels inside panel cells, scales `HIGH` to its table row, and improves month/year readability
-- Translates the title, legend labels, and detected month/year without requiring date input
+Jalankan lint dan tes dari `frontend-react/`:
 
-## Output
-
-- **Excel**: Flat table with columns `Kode`, `Produk`, `Negara`, `Pelabuhan`, `Berat`, `Nilai`, `Berat (Ton)`
-- **Map**: JPEG with translated panel text, original map body untouched
-
-## Optional Backend
-
-The PWA includes smart API resolution (`src/lib/api.js`) for an optional FastAPI backend:
-- Auto-detects LAN IP, tunnel URLs (cloudflared/ngrok), Tailscale
-- Falls back to `/api` proxy on same origin (Vite proxies to local FastAPI)
-- Backend endpoints: `/health`, `/transform`, `/translate-map`
-
-To use backend: host FastAPI separately (Railway, Render, VPS, etc.) and set URL in **Pengaturan → Alamat backend**.
-
-## Regenerate PWA Icons
-
-```bash
-python frontend-react/scripts/generate_icons.py
+```powershell
+npm run lint
+npm test
 ```
 
-## License
+Source aplikasi berada di `frontend-react/src/`; integrasi Electron ada di `frontend-react/electron/`.
 
-Internal project — free to use and modify.
+## Lisensi
+
+Proyek internal - bebas digunakan dan dimodifikasi.
