@@ -9,7 +9,7 @@
  * fall back to it after the first successful load.
  */
 
-const CACHE_NAME = 'fastwork-shell-v5';
+const CACHE_NAME = 'fastwork-shell-v6';
 
 // Resolve relative to sw registration location so it works on subpaths (e.g. /ProjekAyah/)
 const getBaseScope = () => {

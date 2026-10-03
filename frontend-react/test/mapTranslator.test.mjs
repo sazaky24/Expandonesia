@@ -22,7 +22,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas'
 
 import { applyEdits, buildOcrStrip, planMapTranslations, setCanvasFactory } from '../src/lib/localMap.js'
 import { analyzePanel } from '../src/lib/mapPanel.js'
-import { disposeOcr, recognizePanel } from '../src/lib/mapOcr.js'
+import { buildWorkerPathOptions, disposeOcr, recognizePanel } from '../src/lib/mapOcr.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const projectRoot = resolve(here, '..', '..')
@@ -35,6 +35,25 @@ setCanvasFactory((width, height) => createCanvas(width, height))
 // alive after the assertions are done — release it so the run can exit.
 after(async () => {
   await disposeOcr()
+})
+
+test('OCR worker options preserve Tesseract defaults when custom paths are unset', () => {
+  assert.deepEqual(
+    buildWorkerPathOptions({ worker: undefined, core: undefined, lang: undefined }),
+    {},
+  )
+  assert.deepEqual(
+    buildWorkerPathOptions({ worker: 'undefined', core: 'null', lang: '  ' }),
+    {},
+  )
+  assert.deepEqual(
+    buildWorkerPathOptions({ worker: '/ocr/worker.js', core: '/ocr/core', lang: '/ocr/lang' }),
+    {
+      workerPath: '/ocr/worker.js',
+      corePath: '/ocr/core',
+      langPath: '/ocr/lang',
+    },
+  )
 })
 
 /** Panel boxes measured from the reference sample. */

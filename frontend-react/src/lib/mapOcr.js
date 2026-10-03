@@ -42,6 +42,16 @@ export const OCR_OPTION_KEYS = STORAGE
 
 const isBrowser = () => typeof window !== 'undefined' && typeof Worker !== 'undefined'
 
+export function buildWorkerPathOptions({ worker, core, lang } = {}) {
+  const options = {}
+  const paths = { workerPath: worker, corePath: core, langPath: lang }
+  for (const [key, path] of Object.entries(paths)) {
+    const value = typeof path === 'string' ? path.trim() : ''
+    if (value && value !== 'undefined' && value !== 'null') options[key] = value
+  }
+  return options
+}
+
 let workerPromise = null
 let workerLang = ''
 
@@ -68,9 +78,14 @@ async function getWorker(lang, onProgress) {
     }
     if (isBrowser()) {
       // Same-origin vendored copies win when configured; otherwise the CDN.
-      options.workerPath = readOption('worker')
-      options.corePath = readOption('core')
-      options.langPath = readOption('lang')
+      Object.assign(
+        options,
+        buildWorkerPathOptions({
+          worker: readOption('worker'),
+          core: readOption('core'),
+          lang: readOption('lang'),
+        }),
+      )
     }
     const worker = await createWorker(lang, OEM.LSTM_ONLY, options)
     return worker

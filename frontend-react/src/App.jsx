@@ -70,6 +70,7 @@ export default function App() {
   // derived (no health entry for the current URL yet), so this effect never sets
   // state synchronously.
   useEffect(() => {
+    if (useLocalEngine) return undefined
     let cancelled = false
     checkHealth(apiUrl).then((result) => {
       if (!cancelled) setHealth({ url: apiUrl, ok: result.ok, message: result.message })
@@ -77,7 +78,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [apiUrl])
+  }, [apiUrl, useLocalEngine])
 
   // Keep the current tab in the URL so a reload (or the PWA shortcut) restores it.
   useEffect(() => {
