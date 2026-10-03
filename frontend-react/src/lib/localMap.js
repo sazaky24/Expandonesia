@@ -12,7 +12,7 @@
  *   4. cover exactly those boxes with white and draw the English text
  *
  * The map body (coastlines, colour shading, sea names, the "Update" stamp and
- * the BMKG logo) is never modified. The month/year line follows the UI values.
+ * the BMKG logo) is never modified. Month/year text is translated from OCR.
  */
 
 import { FONT_FAMILY, planPanelEdits } from './mapEdits.js'
@@ -140,7 +140,7 @@ function mapBox(box, scale, cropBox) {
  */
 export async function planMapTranslations(
   imageData,
-  { month, year, sourceCanvas, onProgress, lang = OCR_LANG } = {},
+  { sourceCanvas, onProgress, lang = OCR_LANG } = {},
 ) {
   const panel = analyzePanel(imageData)
   if (!panel || !panel.cells.length) return { edits: [], stats: null, panel: null }
@@ -169,8 +169,6 @@ export async function planMapTranslations(
     cells: panel.cells,
     panelHeight: panel.panelBottom - panel.panelTop,
     measure: measureText,
-    month,
-    year,
   })
   onProgress?.(0.9)
   return { edits, stats, panel }
@@ -223,7 +221,7 @@ function loadImage(source) {
  * Remaster + translate the map locally.
  * @returns {Promise<{blob: Blob, stats: object|null}>}
  */
-export async function remasterMapLocally(source, month, year, onProgress) {
+export async function remasterMapLocally(source, onProgress) {
   onProgress?.(0.15)
 
   const image = await loadImage(source)
@@ -231,14 +229,16 @@ export async function remasterMapLocally(source, month, year, onProgress) {
   onProgress?.(0.35)
 
   const { edits, stats } = await planMapTranslations(imageData, {
-    month,
-    year,
     sourceCanvas: canvas,
     onProgress: (fraction) => {
       const pct = Math.round(fraction * 100)
       if (pct > 35) onProgress?.(pct)
     },
   })
+
+  if (!stats) {
+    throw new Error('Panel informasi peta tidak terdeteksi. Gunakan gambar peta dengan legenda di bagian bawah.')
+  }
 
   applyEdits(ctx, edits)
   onProgress?.(0.95)

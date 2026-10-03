@@ -4,7 +4,7 @@ Frontend **mobile-first** untuk backend FastAPI di `../backend`. Dua fitur utama
 
 | Tab | Fitur | Endpoint |
 |-----|-------|----------|
-| Translate | Terjemahkan legenda peta curah hujan (ID → EN) + ganti judul bulan/tahun | `POST /translate-map` |
+| Translate | Deteksi dan terjemahkan teks panel peta curah hujan (ID → EN), termasuk bulan/tahun dari gambar | `POST /translate-map` |
 | Excel | Unpivot Excel matriks menjadi tabel datar | `POST /transform` |
 | Pengaturan | Alamat backend, pasang aplikasi, cache & versi | `GET /health` |
 
@@ -32,7 +32,7 @@ src/
   lib/format.js            formatBytes + daftar nama bulan
   components/              Card, StepCard, Primary/GhostButton, Pill, ProgressBar,
                            Notice, TopBar, TabBar, Toast, SettingsSheet
-  features/translate/      TranslateMapTool — kamera/galeri, bulan & tahun, hasil
+  features/translate/      TranslateMapTool — kamera/galeri, hasil
   features/excel/          ExcelUnpivotTool — pilih file, transformasi, simpan
 ```
 

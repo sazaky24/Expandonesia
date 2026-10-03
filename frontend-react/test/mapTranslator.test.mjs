@@ -5,7 +5,7 @@
  * BMKG-style map. This test rebuilds the equivalent INDONESIAN input by painting
  * Indonesian text into the same panel boxes, runs the translator, and checks:
  *   - the detected title / table header / row labels / legend were translated
- *   - the month-year line follows the UI values
+ *   - the month-year line is translated from the text detected in the image
  *   - nothing outside the rewritten text boxes changed (map body untouched)
  *   - no Indonesian word survives in the output panel (verified with OCR)
  *
@@ -122,8 +122,6 @@ test('map translator: Indonesian panel → English, map body untouched', async (
 
   // ---- translate --------------------------------------------------------
   const { edits, stats } = await planMapTranslations(fixtureData, {
-    month: 'JULY',
-    year: '2026',
     sourceCanvas: fixture,
   })
 

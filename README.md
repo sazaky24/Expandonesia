@@ -61,13 +61,13 @@ frontend-react/                # React 19 + Vite 8 + Tailwind 3 PWA
 ### Weather Map (BMKG GSMaP)
 - Precipitation analysis map with Indonesian legend panel at bottom
 - Auto-detects panel location (works on 1280×912 and larger originals)
-- Translates: "RENDAH→LOW", "MENENGAH→MEDIUM", "TINGGI→HIGH", "SANGAT TINGGI→VERY HIGH", "Batas Propinsi→Province Border", "Luar Negeri→Overseas"
-- Month/year in title replaced with UI values
+- Detects text in the panel and redraws its English translation over the original text positions
+- Translates the title, legend labels, and detected month/year without requiring date input
 
 ## Output
 
 - **Excel**: Flat table with columns `Kode`, `Produk`, `Negara`, `Pelabuhan`, `Berat`, `Nilai`, `Berat (Ton)`
-- **Map**: JPEG with translated legend, original map body untouched
+- **Map**: JPEG with translated panel text, original map body untouched
 
 ## Optional Backend
 

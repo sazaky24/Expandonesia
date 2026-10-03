@@ -100,11 +100,9 @@ function isDateKey(key) {
  * @param {Array<{index:number,x0:number,x1:number}>} params.cells panel cells
  * @param {number} params.panelHeight
  * @param {(text:string,size:number)=>number} params.measure text width in px
- * @param {string} params.month English month name (from the UI)
- * @param {string} params.year  four-digit year (from the UI)
  * @returns {{edits:Array<object>, stats:object}}
  */
-export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, month, year }) {
+export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }) {
   const minHeight = Math.max(5, Math.floor(panelHeight * RENDER.minHeightFrac))
   const edits = []
   const stats = { lines: 0, translated: 0, title: false, date: false, labels: 0 }
@@ -145,9 +143,16 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
       // that row as a date would destroy the table.
       if (words.some((w) => matchMonth(w.key))) {
         const dateBoxes = words.filter((w) => isDateKey(w.key)).map((w) => w.bbox)
+        const monthWord = words.find((w) => matchMonth(w.key))
+        const monthTranslation = monthWord ? matchMonth(monthWord.key) : null
+        const detectedMonth =
+          monthTranslation && monthWord.text === monthWord.text.toUpperCase()
+            ? monthTranslation.toUpperCase()
+            : monthTranslation
+        const detectedYear = words.map((w) => matchYear(w.text)).find(Boolean)
         plans.push({
           kind: 'date',
-          text: `${month} ${year}`.trim(),
+          text: [detectedMonth, detectedYear].filter(Boolean).join(' '),
           box: unionBoxes(dateBoxes.length ? dateBoxes : words.map((w) => w.bbox)),
           words,
           cell,

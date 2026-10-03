@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { ArrowRightLeft, Camera, Cpu, RotateCcw, Share2, Upload } from 'lucide-react'
 
-import { Notice, Pill, PrimaryButton, ProgressBar, StepCard } from '../../components/ui'
+import { Pill, PrimaryButton, ProgressBar, StepCard } from '../../components/ui'
 import { saveFile } from '../../lib/download'
-import { MONTHS, currentMonthName, formatBytes } from '../../lib/format'
-import { CALIBRATION, remasterMapLocally } from '../../lib/localMap'
+import { formatBytes } from '../../lib/format'
+import { remasterMapLocally } from '../../lib/localMap'
 
 const MAX_BYTES = 25 * 1024 * 1024
 
@@ -13,8 +13,6 @@ export default function TranslateMapTool({ notify }) {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState('')
   const [dimensions, setDimensions] = useState(null)
-  const [month, setMonth] = useState(currentMonthName)
-  const [year, setYear] = useState(() => String(new Date().getFullYear()))
   const [result, setResult] = useState(null) // { blob, url }
   const [view, setView] = useState('result') // 'original' | 'result'
   const [busy, setBusy] = useState(false)
@@ -34,9 +32,7 @@ export default function TranslateMapTool({ notify }) {
     [result],
   )
 
-  // Read the pixel size locally so the calibration warning can be immediate.
-  // Resetting happens in the picker handlers, so this effect only reacts to a
-  // loaded image (never a synchronous setState).
+  // Read the pixel size locally to show useful source-image details.
   useEffect(() => {
     if (!previewUrl) return undefined
     let cancelled = false
@@ -49,11 +45,6 @@ export default function TranslateMapTool({ notify }) {
       cancelled = true
     }
   }, [previewUrl])
-
-  const yearValue = year.trim()
-  const yearValid = /^\d{4}$/.test(yearValue) && Number(yearValue) >= 1900 && Number(yearValue) <= 2100
-  const sizeMismatch =
-    dimensions && (dimensions.width !== CALIBRATION.width || dimensions.height !== CALIBRATION.height)
 
   const handlePicked = useCallback(
     (event) => {
@@ -90,23 +81,18 @@ export default function TranslateMapTool({ notify }) {
 
   const handleTranslate = async () => {
     if (!file || busy) return
-    if (!yearValid) {
-      notify('error', 'Tahun harus 4 angka, contoh 2026.')
-      return
-    }
 
     setBusy(true)
     setProgress(10)
 
     try {
       // 100% client-side: OCR + rewrite run in this tab (see src/lib/localMap.js).
-      const blob = await remasterMapLocally(file, month, yearValue, (pct) => {
+      const { blob } = await remasterMapLocally(file, (pct) => {
         setProgress(pct)
       })
-
       setResult({ blob, url: URL.createObjectURL(blob) })
       setView('result')
-      notify('success', `Peta ${month} ${yearValue} selesai diterjemahkan di HP.`)
+      notify('success', 'Peta selesai diterjemahkan di HP.')
     } catch (error) {
       notify('error', error.message || 'Gagal menerjemahkan peta.')
     } finally {
@@ -117,10 +103,10 @@ export default function TranslateMapTool({ notify }) {
 
   const handleSave = async () => {
     if (!result) return
-    const filename = `map_${month.toLowerCase()}_${yearValue}.jpg`
+    const filename = 'map_translated.jpg'
     const outcome = await saveFile(result.blob, filename, {
       mime: 'image/jpeg',
-      title: `Peta ${month} ${yearValue}`,
+      title: 'Peta hasil translate',
     })
     if (outcome === 'shared') notify('success', 'Hasil dikirim ke aplikasi pilihan Anda.')
     else if (outcome === 'downloaded') notify('success', `File ${filename} diunduh.`)
@@ -137,15 +123,15 @@ export default function TranslateMapTool({ notify }) {
           </span>
         </div>
         <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-          Legenda diterjemahkan langsung di mesin HP Anda. Saat pertama kali aplikasi mengunduh
-          data bahasa OCR (±4 MB, sekali saja); setelahnya bisa diproses sepenuhnya offline.
+          Teks pada panel peta dideteksi dan diterjemahkan langsung di HP Anda, dengan hasil
+          ditempatkan kembali pada area teks semula. Data bahasa OCR diunduh sekali (±4 MB).
         </p>
       </header>
 
       <StepCard
         step="1"
         title="Ambil gambar peta"
-        subtitle="Foto langsung dari kamera atau pilih gambar yang sudah ada di HP."
+        subtitle="Arahkan kamera ke peta atau pilih gambar yang ingin diterjemahkan."
       >
         <input
           id="map-camera"
@@ -193,12 +179,6 @@ export default function TranslateMapTool({ notify }) {
                 </Pill>
               ) : null}
             </div>
-            {sizeMismatch ? (
-              <Notice tone="amber">
-                Peta contoh berukuran {CALIBRATION.width}×{CALIBRATION.height} px. Ukuran lain tetap
-                bisa diproses, tetapi posisi teks hasil bisa bergeser.
-              </Notice>
-            ) : null}
             <button
               type="button"
               onClick={reset}
@@ -213,41 +193,13 @@ export default function TranslateMapTool({ notify }) {
 
       <StepCard
         step="2"
-        title="Pilih bulan & tahun"
-        subtitle="Nilai ini menggantikan judul bulan/tahun pada peta hasil."
+        title="Terjemahkan peta"
+        subtitle="Teks pada panel peta dideteksi, lalu terjemahannya ditempatkan kembali di posisi semula."
       >
-        <div className="grid grid-cols-2 gap-2">
-          <label className="space-y-1.5">
-            <span className="block text-[12px] font-semibold text-slate-600">Bulan</span>
-            <select
-              value={month}
-              onChange={(event) => setMonth(event.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            >
-              {MONTHS.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1.5">
-            <span className="block text-[12px] font-semibold text-slate-600">Tahun</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={4}
-              value={year}
-              onChange={(event) => setYear(event.target.value.replace(/[^\d]/g, ''))}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            />
-          </label>
-        </div>
-
         <PrimaryButton
           icon={ArrowRightLeft}
           onClick={handleTranslate}
-          disabled={!file || !yearValid || busy}
+          disabled={!file || busy}
           loading={busy}
         >
           {busy ? 'Memproses…' : 'Translate peta'}
