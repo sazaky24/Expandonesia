@@ -7,7 +7,7 @@
  *
  * Steps:
  *   1. text mask  = near-black, low-saturation pixels (skips colour fills)
- *   2. h-rules    = rows whose mask covers > 50% of the width (table borders)
+ *   2. h-rules    = rows whose mask covers > 65% of the width (table borders)
  *   3. panel top  = last h-rule above 85% height (bottom edge of the map frame)
  *   4. v-rules    = columns whose mask covers > 70% of the panel height
  *      v-rules split the panel into cells: title | table | legend | scale bar
@@ -16,7 +16,7 @@
 export const DETECT = {
   darkLum: 140,
   satMax: 45,
-  hRuleRatio: 0.5,
+  hRuleRatio: 0.65,
   vRuleRatio: 0.7,
   vRuleMergeFrac: 0.06,
   panelGap: 3,
@@ -124,7 +124,13 @@ export function analyzePanel(imageData, detect = DETECT) {
 
   const vRules = []
   for (const centre of centres(groupRuns(colFlags))) {
-    if (vRules.length && centre - vRules[vRules.length - 1] < detect.vRuleMergeFrac * width) continue
+    if (vRules.length && centre - vRules[vRules.length - 1] < detect.vRuleMergeFrac * width) {
+      const previous = vRules[vRules.length - 1]
+      if (vRules.length === 1 && previous <= detect.margin + 8 && centre > previous) {
+        vRules[0] = centre
+      }
+      continue
+    }
     vRules.push(centre)
   }
 

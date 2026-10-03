@@ -41,6 +41,7 @@ export const ID_EN_TOKENS = {
   curah: 'RAINFALL',
   anomali: 'ANOMALY',
   prakiraan: 'FORECAST',
+  prediksi: 'FORECAST',
   perkiraan: 'FORECAST',
   forecast: 'FORECAST',
   analisis: 'ANALYSIS',
@@ -48,6 +49,8 @@ export const ID_EN_TOKENS = {
   ramalan: 'FORECAST',
   indonesia: 'INDONESIA',
   keterangan: 'LEGEND',
+  keterangam: 'LEGEND',
+  keterangn: 'LEGEND',
   legenda: 'LEGEND',
   batas: 'BORDER',
   propinsi: 'PROVINCIAL',
@@ -85,12 +88,20 @@ export const ID_EN_TOKENS = {
   umum: 'GENERAL',
   mm: 'MM',
   ton: 'TON',
+  sifat: 'CHARACTERISTICS',
+  sifathujan: 'RAINFALL CHARACTERISTICS',
+  sifatrainfall: 'RAINFALL CHARACTERISTICS',
+  overseasnegeri: 'OVERSEAS',
+  luarnegeri: 'OVERSEAS',
 }
 
 /** Word-sequence rules; the first matching (longest) entry wins. */
 export const ID_EN_PHRASES = [
   // ---- full titles (the title cell is replaced as a single line) ----------
   [['peta', 'prakiraan', 'anomali', 'curah', 'hujan'], 'PRECIPITATION ANOMALY FORECAST MAP'],
+  [['prediksi', 'sifat', 'hujan'], 'RAINFALL CHARACTERISTICS FORECAST'],
+  [['prediksi', 'sifathujan'], 'RAINFALL CHARACTERISTICS FORECAST'],
+  [['prediksi', 'sifatrainfall'], 'RAINFALL CHARACTERISTICS FORECAST'],
   [['peta', 'prakiraan', 'anomali', 'hujan'], 'RAINFALL ANOMALY FORECAST MAP'],
   [['peta', 'prakiraan', 'curah', 'hujan'], 'PRECIPITATION FORECAST MAP'],
   [['peta', 'analisis', 'anomali', 'curah', 'hujan'], 'PRECIPITATION ANOMALY ANALYSIS MAP'],
@@ -127,6 +138,7 @@ export const ID_EN_PHRASES = [
   [['kelembapan', 'udara'], 'AIR HUMIDITY'],
   [['kelembaban', 'udara'], 'AIR HUMIDITY'],
   [['hari', 'hujan'], 'RAINY DAYS'],
+  [['sifat', 'hujan'], 'RAINFALL CHARACTERISTICS'],
 
   // ---- legend / row labels ----------------------------------------------
   [['di', 'bawah', 'normal'], 'Below Normal'],
@@ -178,7 +190,8 @@ export function isNumericKey(key) {
 }
 
 export function matchMonth(key) {
-  return MONTH_LOOKUP.get(key) || null
+  const normalized = String(key ?? '').replace(/^\d+(?=[a-z])/, '')
+  return MONTH_LOOKUP.get(normalized) || null
 }
 
 export function matchYear(raw) {

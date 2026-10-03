@@ -45,6 +45,37 @@ function median(values) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
+function sampleTextColor(imageData, box) {
+  const { data, width, height } = imageData
+  const [x0, y0, x1, y1] = box
+  const bins = new Map()
+  for (let y = Math.max(0, Math.floor(y0)); y < Math.min(height, Math.ceil(y1)); y += 1) {
+    for (let x = Math.max(0, Math.floor(x0)); x < Math.min(width, Math.ceil(x1)); x += 1) {
+      const i = (y * width + x) * 4
+      const r = data[i]
+      const g = data[i + 1]
+      const b = data[i + 2]
+      const saturation = Math.max(r, g, b) - Math.min(r, g, b)
+      if (saturation < 55 || Math.max(r, g, b) > 240) continue
+      const key = `${Math.floor(r / 32)},${Math.floor(g / 32)},${Math.floor(b / 32)}`
+      const entry = bins.get(key) || { count: 0, r: 0, g: 0, b: 0 }
+      entry.count += 1
+      entry.r += r
+      entry.g += g
+      entry.b += b
+      bins.set(key, entry)
+    }
+  }
+
+  let dominant = null
+  for (const entry of bins.values()) {
+    if (!dominant || entry.count > dominant.count) dominant = entry
+  }
+  if (!dominant) return '#000000'
+  const channel = (sum) => Math.round(sum / dominant.count)
+  return `rgb(${channel(dominant.r)}, ${channel(dominant.g)}, ${channel(dominant.b)})`
+}
+
 /**
  * Keep every OCR word (so junk still limits edits) but blank the key of words
  * that must never be translated (colour swatches, low confidence, tiny noise).
@@ -58,13 +89,14 @@ function prepareWords(line, imageData, minHeight) {
   return words.map((w) => {
     const height = w.bbox.y1 - w.bbox.y0
     const width = w.bbox.x1 - w.bbox.x0
+    const key = tokenKey(w.text)
     const solid = solidRatio(imageData, [w.bbox.x0, w.bbox.y0, w.bbox.x1, w.bbox.y1])
     const trusted =
-      w.confidence >= RENDER.minConfidence &&
+      (w.confidence >= RENDER.minConfidence || /^keterang(?:an|am|n)$/.test(key)) &&
       height >= minHeight &&
       width >= 3 &&
       solid < RENDER.maxSolidRatio
-    return { ...w, key: trusted ? tokenKey(w.text) : '', solid }
+    return { ...w, key: trusted ? key : '', solid }
   })
 }
 
@@ -85,10 +117,6 @@ function cellIndexFor(cells, x) {
     if (x >= cell.x0 && x <= cell.x1) return cell.index
   }
   return -1
-}
-
-function isDateKey(key) {
-  return Boolean(matchMonth(key) || matchYear(key))
 }
 
 /**
@@ -133,35 +161,76 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
     entries.sort((a, b) => a.words[0].bbox.y0 - b.words[0].bbox.y0)
     const plans = []
 
-    for (const { words, cell } of entries) {
+    for (const [entryIndex, { words, cell }] of entries.entries()) {
       stats.lines += 1
       const keys = words.map((w) => w.key)
+      const rawKeys = words.map((w) => tokenKey(w.text))
 
       // --- month / year line ------------------------------------------------
       // A month word must be present: a lone 4-digit number is far more often
       // a misread data value ("> 200 %" → "2009") than a year, and rewriting
       // that row as a date would destroy the table.
-      if (words.some((w) => matchMonth(w.key))) {
-        const dateBoxes = words.filter((w) => isDateKey(w.key)).map((w) => w.bbox)
-        const monthWord = words.find((w) => matchMonth(w.key))
+      const monthIndex = words.findIndex((w) => matchMonth(w.key))
+      if (monthIndex >= 0) {
+        const monthWord = words[monthIndex]
         const monthTranslation = monthWord ? matchMonth(monthWord.key) : null
         const detectedMonth =
           monthTranslation && monthWord.text === monthWord.text.toUpperCase()
             ? monthTranslation.toUpperCase()
             : monthTranslation
-        const detectedYear = words.map((w) => matchYear(w.text)).find(Boolean)
+        const yearIndex = words.findIndex((w) => matchYear(w.text))
+        const detectedYear = yearIndex >= 0 ? matchYear(words[yearIndex].text) : null
+        const updateIndex = words.findIndex((w) => tokenKey(w.text) === 'update')
+        let dateStart = monthIndex
+        let dateEnd = Math.max(monthIndex, yearIndex)
+        let dateText = [detectedMonth, detectedYear].filter(Boolean).join(' ')
+        if (updateIndex >= 0) {
+          dateStart = updateIndex
+          const dayWord = words
+            .slice(updateIndex + 1, monthIndex)
+            .find((word) => /\d/.test(word.text))
+          const dayDigits = dayWord?.text.match(/\d{1,2}/)?.[0]
+          const day = dayDigits && dayDigits.length === 2 ? dayDigits : '01'
+          dateText = `Update : ${day} ${detectedMonth} ${detectedYear || ''}`.trim()
+        }
+        const dateBoxWords = words.slice(dateStart, dateEnd + 1)
+        const dateBox = unionBoxes(dateBoxWords.map((w) => w.bbox))
         plans.push({
           kind: 'date',
-          text: [detectedMonth, detectedYear].filter(Boolean).join(' '),
-          box: unionBoxes(dateBoxes.length ? dateBoxes : words.map((w) => w.bbox)),
+          text: dateText,
+          box: dateBox,
+          color: sampleTextColor(imageData, dateBox),
           words,
           cell,
+          dateType: updateIndex >= 0 ? 'update' : 'monthYear',
+        })
+        continue
+      }
+
+      const hasRainfallMmHeader =
+        cell.index === 1 &&
+        entryIndex === 0 &&
+        rawKeys.includes('mm') &&
+        ((rawKeys.includes('curah') && rawKeys.includes('hujan')) ||
+          rawKeys.includes('rainfall'))
+      if (hasRainfallMmHeader) {
+        plans.push({
+          kind: 'text',
+          text: 'RAINFALL MM :',
+          box: unionBoxes(words.map((w) => w.bbox)),
+          words,
+          cell,
+          run: { start: 0, end: words.length },
+          compactHeader: true,
         })
         continue
       }
 
       // --- translated runs --------------------------------------------------
       for (const run of translateRuns(keys)) {
+        const isCategoryLabel =
+          cell.index === 1 &&
+          /^HIGH$/i.test(run.text)
         plans.push({
           kind: 'text',
           text: run.text,
@@ -169,7 +238,55 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
           words,
           cell,
           run,
+          categoryLabel: isCategoryLabel,
+          legendLabel: cell.index === 2 && /^(OVERSEAS|PROVINCIAL BORDERS)$/i.test(run.text),
+          compact: (cell.index === 0 && /\bMAP\b|\bFORECAST\b/.test(run.text)) ||
+            (cell.index === 1 && entryIndex === 0),
         })
+      }
+
+      // Already-English category labels still need consistent sizing so an
+      // OCR bounding box inflated by nearby table artwork cannot render them
+      // oversized relative to translated labels.
+      if (cell.index === 1) {
+        for (let start = 0; start < keys.length; start += 1) {
+          let joined = ''
+          for (let end = start; end < Math.min(keys.length, start + 4); end += 1) {
+            if (!/^[a-z]+$/.test(keys[end]) || joined.length + keys[end].length > 4) break
+            joined += keys[end]
+            if (joined === 'high' && plans.some((plan) =>
+              plan.words === words && plan.run?.start <= end && plan.run?.end > start
+            )) {
+              break
+            }
+            if (joined === 'high' && end > start) {
+              const fragments = words.slice(start, end + 1)
+              const top = Math.max(...fragments.map((word) => word.bbox.y0))
+              const bottom = Math.min(...fragments.map((word) => word.bbox.y1))
+              const height = Math.min(...fragments.map((word) => word.bbox.y1 - word.bbox.y0))
+              const largestGap = Math.max(
+                ...fragments.slice(1).map((word, index) => word.bbox.x0 - fragments[index].bbox.x1),
+              )
+              if (bottom - top < height * 0.55 || largestGap > height * 0.5) break
+            }
+            if (joined === 'high' && !plans.some((plan) =>
+              plan.words === words && plan.run?.start <= end && plan.run?.end > start
+            )) {
+              plans.push({
+                kind: 'text',
+                text: 'HIGH',
+                box: unionBoxes(words.slice(start, end + 1).map((word) => word.bbox)),
+                words,
+                cell,
+                run: { start, end: end + 1 },
+                categoryLabel: true,
+              })
+              start = end
+              break
+            }
+            if (!'high'.startsWith(joined)) break
+          }
+        }
       }
     }
 
@@ -198,44 +315,83 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
         limitRange(plan.words, run ? run.start : 0, run ? run.end : plan.words.length, plan.cell)
       const height = plan.height || plan.box[3] - plan.box[1]
 
-      let size = Math.round(height * RENDER.fontFactor)
+      const fontFactor = plan.kind === 'date'
+        ? plan.dateType === 'update' ? 0.7 : 1
+        : plan.legendLabel
+          ? 0.95
+          : plan.categoryLabel
+            ? 0.95
+        : plan.compactHeader
+          ? 0.9
+          : plan.compact
+            ? 1.2
+            : RENDER.fontFactor
+      const panelDateSize =
+        plan.kind === 'date' && plan.dateType === 'monthYear'
+          ? Math.round(panelHeight * 0.07)
+          : RENDER.minFont
+      let size = Math.max(Math.round(height * fontFactor), panelDateSize)
       size = Math.max(RENDER.minFont, Math.min(RENDER.maxFont, size))
-      const available = Math.max(24, limits.right - limits.left)
+      const textLeft = Math.max(
+        limits.left + RENDER.padX,
+        plan.legendLabel ? plan.box[0] : -Infinity,
+      )
+      const textRight = limits.right - RENDER.padX
+      const available = Math.max(24, textRight - textLeft)
       while (size > RENDER.minFont && measure(plan.text, size) > available) size -= 1
 
-      const targetWidth = Math.min(measure(plan.text, size), available)
-      const centre = (plan.box[0] + plan.box[2]) / 2
-      let tx0 = centre - targetWidth / 2
-      let tx1 = centre + targetWidth / 2
-      if (tx0 < limits.left) {
-        tx0 = limits.left
-        tx1 = tx0 + targetWidth
-      }
-      if (tx1 > limits.right) {
-        tx1 = limits.right
-        tx0 = tx1 - targetWidth
-      }
+      const targetWidth = measure(plan.text, size)
+      if (targetWidth > available) continue
+      const centre = plan.legendLabel
+        ? Math.max((plan.box[0] + plan.box[2]) / 2, textLeft + targetWidth / 2)
+        : (plan.box[0] + plan.box[2]) / 2
+      const textX = Math.max(
+        textLeft + targetWidth / 2,
+        Math.min(centre, textRight - targetWidth / 2),
+      )
+      const tx0 = textX - targetWidth / 2
+      const tx1 = textX + targetWidth / 2
 
       const original = plan.words
         .slice(run ? run.start : 0, run ? run.end : plan.words.length)
         .map((w) => w.text)
         .join(' ')
       const letters = (value) => value.replace(/[^A-Za-z]/g, '').toLowerCase()
-      if (letters(original) && letters(original) === letters(plan.text)) continue // already English
+      if (
+        !plan.compactHeader &&
+        !plan.categoryLabel &&
+        !(plan.kind === 'date' && plan.dateType === 'monthYear') &&
+        letters(original) &&
+        letters(original) === letters(plan.text)
+      ) {
+        continue
+      }
 
-      const text = /:/.test(original) && !/:/.test(plan.text) ? `${plan.text} :` : plan.text
+      const text =
+        plan.kind !== 'date' && /:/.test(original) && !/:/.test(plan.text)
+          ? `${plan.text} :`
+          : plan.text
+      const padY = plan.compactHeader || plan.categoryLabel ? 0 : RENDER.padY
       const box = [
-        Math.max(limits.left - 1, Math.min(tx0, plan.box[0]) - RENDER.padX),
-        Math.max(0, plan.box[1] - RENDER.padY),
-        Math.min(limits.right + 1, Math.max(tx1, plan.box[2]) + RENDER.padX),
-        plan.box[3] + RENDER.padY,
+        Math.max(limits.left, Math.min(tx0, plan.box[0]) - RENDER.padX),
+        Math.max(0, plan.box[1] - padY),
+        Math.min(limits.right, Math.max(tx1, plan.box[2]) + RENDER.padX),
+        plan.box[3] + padY,
       ]
       if (box[2] - box[0] < 8 || box[3] - box[1] < 6) continue
 
-      edits.push({ box, text, size, kind: plan.kind, original })
+      edits.push({
+        box,
+        text,
+        textX,
+        size,
+        color: plan.color || '#000000',
+        kind: plan.kind,
+        original,
+      })
       stats.translated += 1
       if (plan.kind === 'date') stats.date = true
-      else if (/\bMAP\b/.test(text)) stats.title = true
+      else if (/\bMAP\b|\bFORECAST\b/.test(text) && plan.cell.index === 0) stats.title = true
       else stats.labels += 1
     }
   }

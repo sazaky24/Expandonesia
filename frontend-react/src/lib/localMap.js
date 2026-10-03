@@ -16,7 +16,7 @@
  */
 
 import { FONT_FAMILY, planPanelEdits } from './mapEdits.js'
-import { analyzePanel } from './mapPanel.js'
+import { analyzePanel, groupRuns } from './mapPanel.js'
 import { OCR_LANG, recognizePanel } from './mapOcr.js'
 
 /** Reference size used by the UI warning; detection itself is size agnostic. */
@@ -81,6 +81,64 @@ function isRuleRow(imageData, y, cell) {
   return dark >= 0.9 * total
 }
 
+function neutralFillBox(imageData, cell, panel) {
+  const { data, width } = imageData
+  const panelHeight = panel.panelBottom - panel.panelTop
+  const x0 = Math.max(0, Math.floor(cell.x0))
+  const x1 = Math.min(width, Math.ceil(cell.x0 + (cell.x1 - cell.x0) * 0.42))
+  const xCounts = new Uint32Array(x1 - x0)
+
+  for (let y = panel.panelTop; y < panel.panelBottom; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
+      const i = (y * width + x) * 4
+      const r = data[i]
+      const g = data[i + 1]
+      const b = data[i + 2]
+      const saturation = Math.max(r, g, b) - Math.min(r, g, b)
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b
+      if (saturation < 25 && luminance >= 100 && luminance <= 230) {
+        xCounts[x - x0] += 1
+      }
+    }
+  }
+
+  const xFlags = Uint8Array.from(xCounts, (count) => (count > panelHeight * 0.025 ? 1 : 0))
+  const xRuns = groupRuns(xFlags, 2).filter(([a, b]) => b - a + 1 >= 10)
+  if (!xRuns.length) return null
+  const [runX0, runX1] = xRuns.sort((a, b) => b[1] - b[0] - (a[1] - a[0]))[0]
+  const boxX0 = x0 + runX0
+  const boxX1 = x0 + runX1
+  const yCounts = new Uint32Array(panelHeight)
+
+  for (let y = panel.panelTop; y < panel.panelBottom; y += 1) {
+    for (let x = boxX0; x <= boxX1; x += 1) {
+      const i = (y * width + x) * 4
+      const r = data[i]
+      const g = data[i + 1]
+      const b = data[i + 2]
+      const saturation = Math.max(r, g, b) - Math.min(r, g, b)
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b
+      if (saturation < 25 && luminance >= 100 && luminance <= 230) {
+        yCounts[y - panel.panelTop] += 1
+      }
+    }
+  }
+
+  const yFlags = Uint8Array.from(yCounts, (count) =>
+    count > (boxX1 - boxX0 + 1) * 0.45 ? 1 : 0,
+  )
+  const yRuns = groupRuns(yFlags, 2).filter(([a, b]) => b - a + 1 >= 10)
+  if (!yRuns.length) return null
+  const [runY0, runY1] = yRuns.sort((a, b) => b[1] - b[0] - (a[1] - a[0]))[0]
+
+  return {
+    x0: Math.max(cell.x0, boxX0 - 3),
+    y0: Math.max(panel.panelTop, panel.panelTop + runY0 - 3),
+    x1: Math.min(cell.x1, boxX1 + 4),
+    y1: Math.min(panel.panelBottom, panel.panelTop + runY1 + 4),
+  }
+}
+
 /** Build the OCR strip: panel crop, vertical rules whitened, upscaled. */
 export function buildOcrStrip(sourceCanvas, imageData, panel) {
   const { width } = imageData
@@ -125,6 +183,52 @@ export function buildOcrStrip(sourceCanvas, imageData, panel) {
   return { strip, scale, cropBox: [0, top, width, bottom] }
 }
 
+/** Create isolated OCR strips for each panel column. */
+export function buildCellOcrStrips(sourceCanvas, imageData, panel) {
+  const base = buildOcrStrip(sourceCanvas, imageData, panel)
+  return panel.cells.map((cell) => {
+    const sourceX = Math.round(cell.x0 * base.scale)
+    const sourceWidth = Math.max(1, Math.round((cell.x1 - cell.x0) * base.scale))
+    const strip = makeCanvas(sourceWidth, base.strip.height)
+    const ctx = context2d(strip)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, strip.width, strip.height)
+    ctx.drawImage(
+      base.strip,
+      sourceX,
+      0,
+      sourceWidth,
+      base.strip.height,
+      0,
+      0,
+      strip.width,
+      strip.height,
+    )
+
+    // The grey overseas swatch touches the legend text and is frequently read
+    // as its first letter. Remove its detected rectangle from the OCR copy only.
+    if (cell.index === 2) {
+      const swatch = neutralFillBox(imageData, cell, panel)
+      if (swatch) {
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(
+          (swatch.x0 - cell.x0) * base.scale,
+          (swatch.y0 - panel.panelTop) * base.scale,
+          (swatch.x1 - swatch.x0) * base.scale,
+          (swatch.y1 - swatch.y0) * base.scale,
+        )
+      }
+    }
+
+    return {
+      strip,
+      scale: base.scale,
+      cropBox: [cell.x0, panel.panelTop, cell.x1, panel.panelBottom],
+      cell,
+    }
+  })
+}
+
 function mapBox(box, scale, cropBox) {
   return {
     x0: Math.max(0, box.x0 / scale + cropBox[0]),
@@ -146,21 +250,31 @@ export async function planMapTranslations(
   if (!panel || !panel.cells.length) return { edits: [], stats: null, panel: null }
   onProgress?.(0.45)
 
-  const { strip, scale, cropBox } = buildOcrStrip(sourceCanvas, imageData, panel)
+  const strips = buildCellOcrStrips(sourceCanvas, imageData, panel)
   onProgress?.(0.55)
 
-  const { lines } = await recognizePanel(strip, { lang })
+  const lines = []
+  for (const { strip, scale, cropBox, cell } of strips) {
+    const result = await recognizePanel(strip, { lang })
+    for (const line of result.lines) {
+      lines.push({
+        ...line,
+        words: line.words.map((word) => ({
+          ...word,
+          bbox: mapBox(word.bbox, scale, cropBox),
+        })),
+        cellIndex: cell.index,
+      })
+    }
+  }
   onProgress?.(0.8)
 
   const mapped = lines.map((line) => ({
     text: line.text,
     confidence: line.confidence,
     bbox: line.bbox,
-    words: line.words.map((word) => ({
-      text: word.text,
-      confidence: word.confidence,
-      bbox: mapBox(word.bbox, scale, cropBox),
-    })),
+    words: line.words,
+    cellIndex: line.cellIndex,
   }))
 
   const { edits, stats } = planPanelEdits({
@@ -181,13 +295,13 @@ export function applyEdits(ctx, edits) {
     ctx.fillStyle = '#FFFFFF'
     ctx.fillRect(Math.floor(x0), Math.floor(y0), Math.ceil(x1 - x0), Math.ceil(y1 - y0))
 
-    ctx.fillStyle = '#000000'
+    ctx.fillStyle = edit.color || '#000000'
     ctx.font = `bold ${edit.size}px ${FONT_FAMILY}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
     ctx.fillText(
       edit.text,
-      (x0 + x1) / 2,
+      edit.textX ?? (x0 + x1) / 2,
       (y0 + y1) / 2 + edit.size * 0.36,
     )
   }
