@@ -75,7 +75,7 @@ frontend-react/                # React 19 + Vite 8 + Tailwind 3 PWA
 - Precipitation analysis map with Indonesian legend panel at bottom
 - Auto-detects panel location (works on 1280×912 and larger originals)
 - Detects panel columns without mistaking the surrounding image border for a cell boundary
-- Fits translated headings and legend labels inside panel cells, keeps the `HIGH` label compact, and improves month/year readability
+- Fits translated headings and legend labels inside panel cells, scales `HIGH` to its table row, and improves month/year readability
 - Translates the title, legend labels, and detected month/year without requiring date input
 
 ## Output

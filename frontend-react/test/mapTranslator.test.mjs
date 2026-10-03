@@ -432,3 +432,40 @@ test('HIGH labels are normalized and month-year dates are not undersized', () =>
   const borderPixel = ctx.getImageData(300, 99, 1, 1).data
   assert.deepEqual(Array.from(borderPixel.slice(0, 3)), [0, 0, 0], 'HIGH redraw must preserve the row border')
 })
+
+test('HIGH font scales with the actual table-row height', () => {
+  const width = 800
+  const height = 400
+  const imageData = { data: new Uint8ClampedArray(width * height * 4).fill(255), width, height }
+  const cell = { index: 1, x0: 260, x1: 480 }
+  for (const y of [99, 161, 220, 340]) {
+    for (let x = cell.x0; x <= cell.x1; x += 1) {
+      const i = (y * width + x) * 4
+      imageData.data[i] = 0
+      imageData.data[i + 1] = 0
+      imageData.data[i + 2] = 0
+    }
+  }
+
+  const { edits } = planPanelEdits({
+    lines: [
+      {
+        words: [{ text: 'TINGGI', bbox: { x0: 320, y0: 120, x1: 390, y1: 140 }, confidence: 95 }],
+      },
+      {
+        words: [{ text: 'TINGGI', bbox: { x0: 320, y0: 260, x1: 390, y1: 280 }, confidence: 95 }],
+      },
+    ],
+    imageData,
+    cells: [{ index: 0, x0: 20, x1: 250 }, cell],
+    panelHeight: 400,
+    measure: (text, size) => text.length * size * 0.55,
+  })
+
+  const highEdits = edits.filter((edit) => edit.text === 'HIGH')
+  assert.equal(highEdits.length, 2, 'both category labels should be translated')
+  assert.ok(
+    highEdits[1].size >= highEdits[0].size * 1.7,
+    `font should grow with the taller row: ${highEdits.map((edit) => edit.size)}`,
+  )
+})

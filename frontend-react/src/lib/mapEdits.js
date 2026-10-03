@@ -119,6 +119,36 @@ function cellIndexFor(cells, x) {
   return -1
 }
 
+function categoryRowHeight(imageData, box, cell) {
+  const { data, width, height } = imageData
+  const cellWidth = cell.x1 - cell.x0 + 1
+  const ruleRuns = []
+  let runStart = -1
+
+  for (let y = Math.max(0, Math.floor(box[1] - 120)); y < Math.min(height, Math.ceil(box[3] + 120)); y += 1) {
+    let dark = 0
+    for (let x = Math.max(0, cell.x0); x <= Math.min(width - 1, cell.x1); x += 1) {
+      const i = (y * width + x) * 4
+      if (data[i] < 80 && data[i + 1] < 80 && data[i + 2] < 80) dark += 1
+    }
+    const isRule = dark / cellWidth >= 0.6
+    if (isRule && runStart < 0) runStart = y
+    if (!isRule && runStart >= 0) {
+      ruleRuns.push((runStart + y - 1) / 2)
+      runStart = -1
+    }
+  }
+  if (runStart >= 0) {
+    const lastY = Math.min(height, Math.ceil(box[3] + 120)) - 1
+    ruleRuns.push((runStart + lastY) / 2)
+  }
+
+  const centre = (box[1] + box[3]) / 2
+  const above = ruleRuns.filter((y) => y < centre).at(-1)
+  const below = ruleRuns.find((y) => y > centre)
+  return above !== undefined && below !== undefined ? below - above : null
+}
+
 /**
  * Build the list of redraw instructions.
  *
@@ -230,7 +260,8 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
       for (const run of translateRuns(keys)) {
         const isCategoryLabel =
           cell.index === 1 &&
-          /^HIGH$/i.test(run.text)
+          /^HIGH$/i.test(run.text) &&
+          keys[run.start - 1] !== 'very'
         plans.push({
           kind: 'text',
           text: run.text,
@@ -250,6 +281,7 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
       // oversized relative to translated labels.
       if (cell.index === 1) {
         for (let start = 0; start < keys.length; start += 1) {
+          if (keys[start - 1] === 'very') continue
           let joined = ''
           for (let end = start; end < Math.min(keys.length, start + 4); end += 1) {
             if (!/^[a-z]+$/.test(keys[end]) || joined.length + keys[end].length > 4) break
@@ -314,13 +346,16 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
         plan.limit ||
         limitRange(plan.words, run ? run.start : 0, run ? run.end : plan.words.length, plan.cell)
       const height = plan.height || plan.box[3] - plan.box[1]
+      const rowHeight = plan.categoryLabel
+        ? categoryRowHeight(imageData, plan.box, plan.cell)
+        : null
 
       const fontFactor = plan.kind === 'date'
         ? plan.dateType === 'update' ? 0.7 : 1
         : plan.legendLabel
           ? 0.95
           : plan.categoryLabel
-            ? 0.95
+            ? rowHeight ? 0.34 : 0.95
         : plan.compactHeader
           ? 0.9
           : plan.compact
@@ -330,7 +365,7 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
         plan.kind === 'date' && plan.dateType === 'monthYear'
           ? Math.round(panelHeight * 0.07)
           : RENDER.minFont
-      let size = Math.max(Math.round(height * fontFactor), panelDateSize)
+      let size = Math.max(Math.round((rowHeight || height) * fontFactor), panelDateSize)
       size = Math.max(RENDER.minFont, Math.min(RENDER.maxFont, size))
       const textLeft = Math.max(
         limits.left + RENDER.padX,
