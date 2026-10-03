@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 export function isSupported() {
+  if (typeof window !== 'undefined' && window.location.protocol === 'app:') return false
   return typeof navigator !== 'undefined' && 'serviceWorker' in navigator
 }
 
