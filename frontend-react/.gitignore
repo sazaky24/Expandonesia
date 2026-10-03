@@ -7,6 +7,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# OCR language data — downloaded by tesseract.js on first test/dev run (~4 MB each)
+*.traineddata
+
 node_modules
 dist
 dist-ssr

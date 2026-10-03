@@ -3,14 +3,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { ArrowRightLeft, Camera, Cpu, RotateCcw, Share2, Upload } from 'lucide-react'
 
 import { Notice, Pill, PrimaryButton, ProgressBar, StepCard } from '../../components/ui'
-import { postForm } from '../../lib/api'
 import { saveFile } from '../../lib/download'
 import { MONTHS, currentMonthName, formatBytes } from '../../lib/format'
 import { CALIBRATION, remasterMapLocally } from '../../lib/localMap'
 
 const MAX_BYTES = 25 * 1024 * 1024
 
-export default function TranslateMapTool({ notify, useLocalEngine = true }) {
+export default function TranslateMapTool({ notify }) {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState('')
   const [dimensions, setDimensions] = useState(null)
@@ -100,23 +99,10 @@ export default function TranslateMapTool({ notify, useLocalEngine = true }) {
     setProgress(10)
 
     try {
-      let blob
-      if (useLocalEngine) {
-        blob = await remasterMapLocally(file, month, yearValue, (pct) => {
-          setProgress(pct)
-        })
-      } else {
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('target_month', month)
-        formData.append('target_year', yearValue)
-
-        blob = await postForm('/translate-map', formData, {
-          onUploadProgress: (event) => {
-            if (event.total) setProgress(Math.round((event.loaded / event.total) * 100))
-          },
-        })
-      }
+      // 100% client-side: OCR + rewrite run in this tab (see src/lib/localMap.js).
+      const blob = await remasterMapLocally(file, month, yearValue, (pct) => {
+        setProgress(pct)
+      })
 
       setResult({ blob, url: URL.createObjectURL(blob) })
       setView('result')
@@ -151,7 +137,8 @@ export default function TranslateMapTool({ notify, useLocalEngine = true }) {
           </span>
         </div>
         <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-          Legenda diterjemahkan langsung di mesin HP Anda. Tidak memerlukan internet atau laptop yang menyala.
+          Legenda diterjemahkan langsung di mesin HP Anda. Saat pertama kali aplikasi mengunduh
+          data bahasa OCR (±4 MB, sekali saja); setelahnya bisa diproses sepenuhnya offline.
         </p>
       </header>
 
@@ -270,7 +257,7 @@ export default function TranslateMapTool({ notify, useLocalEngine = true }) {
           <div className="space-y-1.5 pt-1">
             <ProgressBar value={progress || 4} />
             <p className="text-[11px] text-slate-500">
-              {progress >= 100 ? 'Backend sedang memproses gambar…' : `Mengunggah ${progress}%…`}
+              {progress >= 100 ? 'Menyimpan hasil…' : `Menerjemahkan di HP… ${progress}%`}
             </p>
           </div>
         ) : null}
@@ -337,7 +324,8 @@ export default function TranslateMapTool({ notify, useLocalEngine = true }) {
       ) : null}
 
       <p className="px-1 pb-2 text-center text-[11px] leading-relaxed text-slate-400">
-        Proses berjalan di memori backend FastAPI — tidak ada file yang ditulis ke disk.
+        Proses berjalan sepenuhnya di browser (PWA) — tidak ada gambar yang dikirim ke server
+        mana pun.
       </p>
     </div>
   )
