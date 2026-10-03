@@ -117,7 +117,7 @@ export function useServiceWorker() {
 
     const swPath = `${import.meta.env.BASE_URL}sw.js`
     navigator.serviceWorker
-      .register(swPath)
+      .register(swPath, { updateViaCache: 'none' })
       .then((reg) => {
         if (cancelled) return
         setRegistration(reg)
