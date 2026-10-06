@@ -1,4 +1,4 @@
-# FastWork Desktop - Frontend
+# Expandonesia Desktop - Frontend
 
 Frontend React/Vite aplikasi desktop Windows. Tampilan dan pemrosesan fitur Excel serta penerjemah peta dibungkus dengan Electron.
 

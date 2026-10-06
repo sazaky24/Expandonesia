@@ -1,5 +1,5 @@
 /**
- * Backend connection helpers for FastWork Mobile.
+ * Backend connection helpers for Expandonesia Mobile.
  *
  * The phone is not the machine running FastAPI, so the API base URL can not be
  * hard-coded to localhost like the desktop build did. Resolution order:
@@ -16,7 +16,7 @@
  * Uses native fetch (no axios) to keep the Pages bundle small.
  */
 
-const STORAGE_KEY = 'fastwork.apiBaseUrl'
+const STORAGE_KEY = 'expandonesia.apiBaseUrl'
 const HTTP_PORT = 8000
 const HTTPS_PORT = 8443
 
@@ -124,7 +124,7 @@ export async function describeError(error, baseUrl) {
     const detail = error?.detail || ''
     if (detail) return `Backend menolak permintaan (HTTP ${status}): ${detail}`
     if ([500, 502, 503, 504].includes(status)) {
-      return `Backend tidak merespons (HTTP ${status}) di ${target}. Pastikan jendela "FastWork Backend" masih hidup.`
+      return `Backend tidak merespons (HTTP ${status}) di ${target}. Pastikan jendela "Expandonesia Backend" masih hidup.`
     }
     if (status === 404) {
       return `Endpoint API tidak ditemukan di ${target}. Kalau aplikasi dibuka lewat tunnel, jalankan dengan "npm run preview"/"npm run dev" (bukan static server biasa), atau isi alamat backend manual di Pengaturan.`

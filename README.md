@@ -1,6 +1,6 @@
-# FastWork Desktop - Penerjemah Peta dan Pengolah Excel
+# Expandonesia Desktop - Penerjemah Peta dan Pengolah Excel
 
-FastWork Desktop adalah aplikasi Windows untuk menerjemahkan teks pada peta curah hujan dan mengubah data Excel matriks menjadi tabel datar. Kedua fitur diproses di perangkat pengguna melalui aplikasi desktop Electron.
+Expandonesia Desktop adalah aplikasi Windows untuk menerjemahkan teks pada peta curah hujan dan mengubah data Excel matriks menjadi tabel datar. Kedua fitur diproses di perangkat pengguna melalui aplikasi desktop Electron.
 
 ## Fitur
 

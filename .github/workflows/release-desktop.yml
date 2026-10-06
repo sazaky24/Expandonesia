@@ -33,6 +33,6 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: FastWork Mobile ${{ github.ref_name }}
+          name: Expandonesia Mobile ${{ github.ref_name }}
           generate_release_notes: true
           files: frontend-react/release/*.exe

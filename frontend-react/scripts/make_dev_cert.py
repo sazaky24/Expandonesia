@@ -88,8 +88,8 @@ def write_config(hosts: list[str]) -> None:
         "x509_extensions = v3_ext",
         "",
         "[dn]",
-        "CN = FastWork Mobile Dev",
-        "O = FastWork Mobile",
+        "CN = Expandonesia Mobile Dev",
+        "O = Expandonesia Mobile",
         "",
         "[v3_ext]",
         # CA:TRUE on the leaf is what mkcert does as well; it makes Android a bit

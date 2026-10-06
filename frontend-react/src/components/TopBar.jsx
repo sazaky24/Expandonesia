@@ -23,7 +23,7 @@ export default function TopBar({
 
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[15px] font-bold leading-tight text-slate-900">
-            FastWork Mobile
+            Expandonesia Mobile
           </h1>
           <p className="truncate text-[11px] text-slate-500">{subtitle}</p>
         </div>

@@ -3,9 +3,9 @@ const fs = require('node:fs/promises')
 const path = require('node:path')
 
 const isDevelopment = !app.isPackaged
-const developmentUrl = process.env.FASTWORK_DESKTOP_URL
+const developmentUrl = process.env.EXPANDONESIA_DESKTOP_URL
 const appScheme = 'app'
-const appHost = 'fastwork'
+const appHost = 'expandonesia'
 const distDirectory = path.resolve(__dirname, '..', 'dist')
 
 protocol.registerSchemesAsPrivileged([
@@ -72,7 +72,7 @@ function createWindow() {
     minHeight: 640,
     autoHideMenuBar: true,
     backgroundColor: '#f1f5f9',
-    title: 'FastWork Mobile',
+    title: 'Expandonesia Mobile',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -94,7 +94,7 @@ function createWindow() {
   })
 
   window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedUrl) => {
-    console.error(`FastWork Mobile failed to load ${validatedUrl}: ${errorDescription} (${errorCode})`)
+    console.error(`Expandonesia Mobile failed to load ${validatedUrl}: ${errorDescription} (${errorCode})`)
   })
   window.webContents.on('console-message', (_event, details) => {
     if (details.level >= 2) {
@@ -107,13 +107,13 @@ function createWindow() {
     : window.loadURL(`${appScheme}://${appHost}/index.html`)
 
   page.catch((error) => {
-    console.error('FastWork Mobile window failed to load:', error)
+    console.error('Expandonesia Mobile window failed to load:', error)
   })
 }
 
 app.whenReady().then(() => {
   protocol.handle(appScheme, (request) => serveAppAsset(request.url))
-  app.setAppUserModelId('com.fastwork.mobile')
+  app.setAppUserModelId('com.expandonesia.mobile')
   createWindow()
 
   app.on('activate', () => {

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-const CHUNK_RELOAD_KEY = 'fastwork.chunkReloadAt'
+const CHUNK_RELOAD_KEY = 'expandonesia.chunkReloadAt'
 
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault()

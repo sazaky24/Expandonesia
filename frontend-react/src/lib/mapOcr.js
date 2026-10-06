@@ -8,17 +8,17 @@
  * the engine files), so later runs — and offline runs — need no download.
  *
  * Advanced/offline setups can point at their own copies with:
- *   localStorage['fastwork.ocrLangPath']  e.g. './tesseract/lang'
- *   localStorage['fastwork.ocrCorePath']  e.g. './tesseract/core'
- *   localStorage['fastwork.ocrWorkerPath'] e.g. './tesseract/worker.min.js'
+ *   localStorage['expandonesia.ocrLangPath']  e.g. './tesseract/lang'
+ *   localStorage['expandonesia.ocrCorePath']  e.g. './tesseract/core'
+ *   localStorage['expandonesia.ocrWorkerPath'] e.g. './tesseract/worker.min.js'
  */
 
 export const OCR_LANG = 'ind+eng'
 
 const STORAGE = {
-  lang: 'fastwork.ocrLangPath',
-  core: 'fastwork.ocrCorePath',
-  worker: 'fastwork.ocrWorkerPath',
+  lang: 'expandonesia.ocrLangPath',
+  core: 'expandonesia.ocrCorePath',
+  worker: 'expandonesia.ocrWorkerPath',
 }
 
 function readOption(key) {

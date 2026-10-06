@@ -266,7 +266,7 @@ export async function transformExcelLocally(data, onProgress) {
 
   // Build new output workbook
   const outWb = new ExcelJS.Workbook()
-  outWb.creator = 'FastWork Mobile'
+  outWb.creator = 'Expandonesia Mobile'
   outWb.created = new Date()
 
   const outWs = outWb.addWorksheet('data_matang', {

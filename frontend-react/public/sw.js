@@ -1,5 +1,5 @@
 /*
- * FastWork Mobile — service worker.
+ * Expandonesia Mobile — service worker.
  *
  * Caches only the app shell (HTML/JS/CSS/icons) so the app opens offline.
  * Backend requests (API_URL, usually another origin) are never intercepted, so
@@ -9,7 +9,7 @@
  * fall back to it after the first successful load.
  */
 
-const CACHE_NAME = 'fastwork-shell-v6';
+const CACHE_NAME = 'expandonesia-shell-v6';
 
 // Resolve relative to sw registration location so it works on subpaths (e.g. /ProjekAyah/)
 const getBaseScope = () => {

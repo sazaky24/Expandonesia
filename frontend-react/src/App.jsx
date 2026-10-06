@@ -17,7 +17,7 @@ const SUBTITLES = {
   excel: 'Excel matriks → tabel datar',
 }
 
-const STORAGE_ENGINE_KEY = 'fastwork.useLocalEngine'
+const STORAGE_ENGINE_KEY = 'expandonesia.useLocalEngine'
 
 function readStoredEnginePreference() {
   try {
