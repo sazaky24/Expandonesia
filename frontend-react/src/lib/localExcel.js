@@ -26,48 +26,140 @@ function parseNumber(val) {
   return Number.isFinite(num) ? num : null
 }
 
+function isYellowCell(cell) {
+  const fill = cell.fill
+  if (fill?.type !== 'pattern' || fill.pattern !== 'solid') return false
+  const color = String(fill.fgColor?.argb || '').toUpperCase()
+  return color.endsWith('FFFF00') || Number(fill.fgColor?.indexed) === 6
+}
+
+function findYellowBands(sheet) {
+  const yellowRows = new Set()
+  const yellowColumns = new Set()
+  const rowCount = sheet.rowCount
+  const columnCount = sheet.columnCount
+  const coverage = 0.8
+
+  for (let r = 1; r <= rowCount; r += 1) {
+    let yellowCount = 0
+    for (let c = 1; c <= columnCount; c += 1) {
+      if (isYellowCell(sheet.getCell(r, c))) yellowCount += 1
+    }
+    if (yellowCount / columnCount >= coverage) yellowRows.add(r)
+  }
+
+  for (let c = 1; c <= columnCount; c += 1) {
+    let yellowCount = 0
+    for (let r = 1; r <= rowCount; r += 1) {
+      if (isYellowCell(sheet.getCell(r, c))) yellowCount += 1
+    }
+    if (yellowCount / rowCount >= coverage) yellowColumns.add(c)
+  }
+
+  return { yellowRows, yellowColumns }
+}
+
+function normalizeHeader(value) {
+  return cleanCellValue(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function findHeaderRows(sheet, yellowRows) {
+  let countryRow = -1
+  let portRow = -1
+  let countryLabelColumn = -1
+
+  for (let r = 1; r <= sheet.rowCount; r += 1) {
+    if (yellowRows.has(r)) continue
+    for (let c = 1; c <= sheet.columnCount; c += 1) {
+      const value = normalizeHeader(sheet.getCell(r, c).value)
+      if (countryRow < 0 && /\b(negara|country)\b/.test(value)) {
+        countryRow = r
+        countryLabelColumn = c
+      }
+      if (portRow < 0 && /\b(pelabuhan|port)\b/.test(value)) portRow = r
+    }
+  }
+
+  if (countryRow >= 0 && portRow >= 0) {
+    return { countryRow, portRow, firstMatrixColumn: countryLabelColumn + 1 }
+  }
+
+  let firstDataRow = sheet.rowCount + 1
+  for (let r = 1; r <= sheet.rowCount; r += 1) {
+    const label = cleanCellValue(sheet.getCell(r, 1).value).trim()
+    if (/^\[\s*.+?\s*]\s*\S/.test(label)) {
+      firstDataRow = r
+      break
+    }
+  }
+
+  const candidates = []
+  for (let r = 1; r < firstDataRow; r += 1) {
+    if (yellowRows.has(r)) continue
+    const values = new Set()
+    for (let c = 2; c <= sheet.columnCount; c += 1) {
+      const value = normalizeHeader(sheet.getCell(r, c).value)
+      if (value) values.add(value)
+    }
+    if (values.size >= 2) candidates.push(r)
+  }
+
+  if (candidates.length >= 2) {
+    const [countryHeader, portHeader] = candidates.slice(-2)
+    return {
+      countryRow: countryHeader,
+      portRow: portHeader,
+      firstMatrixColumn: 2,
+    }
+  }
+
+  const nonYellowRows = []
+  for (let r = 1; r < firstDataRow; r += 1) {
+    if (!yellowRows.has(r)) nonYellowRows.push(r)
+  }
+  if (nonYellowRows.length < 2) {
+    throw new Error(`Header Negara dan Pelabuhan tidak ditemukan pada sheet "${sheet.name}".`)
+  }
+  const [countryHeader, portHeader] = nonYellowRows.slice(-2)
+  return {
+    countryRow: countryHeader,
+    portRow: portHeader,
+    firstMatrixColumn: 2,
+  }
+}
+
 function extractMatrix(sheet, valueName) {
   const rowCount = sheet.rowCount
   const colCount = sheet.columnCount
+  if (rowCount < 3 || colCount < 2) return new Map()
 
-  const rows = []
-  for (let r = 1; r <= rowCount; r++) {
-    const row = sheet.getRow(r)
-    const rowVals = []
-    for (let c = 1; c <= colCount; c++) {
-      rowVals.push(row.getCell(c).value)
-    }
-    rows.push(rowVals)
-  }
-
-  if (rows.length < 3) return new Map()
-
-  const r0 = rows[0] // Baris 0: Negara (ffill)
-  const r1 = rows[1] // Baris 1: Pelabuhan
-
-  // Forward fill negara
-  const negaraList = []
+  const { yellowRows, yellowColumns } = findYellowBands(sheet)
+  const { countryRow, portRow, firstMatrixColumn } = findHeaderRows(sheet, yellowRows)
+  const negaraByColumn = new Map()
   let lastNegara = ''
-  for (let c = 1; c < colCount; c++) {
-    const raw = cleanCellValue(r0[c]).trim()
+  for (let c = firstMatrixColumn; c <= colCount; c += 1) {
+    if (yellowColumns.has(c)) {
+      lastNegara = ''
+      continue
+    }
+    const raw = cleanCellValue(sheet.getCell(countryRow, c).value).trim()
     const lower = raw.toLowerCase()
     if (raw && lower !== 'none' && lower !== 'nan' && lower !== 'null') {
       lastNegara = raw
     }
-    negaraList.push(lastNegara)
-  }
-
-  // Pelabuhan list
-  const pelabuhanList = []
-  for (let c = 1; c < colCount; c++) {
-    pelabuhanList.push(cleanCellValue(r1[c]).trim())
+    negaraByColumn.set(c, lastNegara)
   }
 
   const records = new Map()
 
-  // Data rows (baris 2 onwards)
-  for (let r = 2; r < rows.length; r++) {
-    const labelRaw = cleanCellValue(rows[r][0]).trim()
+  for (let r = Math.max(countryRow, portRow) + 1; r <= rowCount; r += 1) {
+    if (yellowRows.has(r)) continue
+    const labelRaw = cleanCellValue(sheet.getCell(r, 1).value).trim()
     const labelLower = labelRaw.toLowerCase()
     if (!labelRaw || ['totals', 'total', 'nan', '', 'none', 'null'].includes(labelLower)) {
       continue
@@ -78,16 +170,17 @@ function extractMatrix(sheet, valueName) {
     const kode = match ? match[1].trim() : labelRaw
     const produk = match ? match[2].trim() : ''
 
-    for (let c = 1; c < colCount; c++) {
-      const neg = negaraList[c - 1]
-      const pel = pelabuhanList[c - 1]
+    for (let c = firstMatrixColumn; c <= colCount; c += 1) {
+      if (yellowColumns.has(c)) continue
+      const neg = negaraByColumn.get(c)
+      const pel = cleanCellValue(sheet.getCell(portRow, c).value).trim()
       if (!neg || !pel) continue
 
       const negLower = neg.toLowerCase()
       const pelLower = pel.toLowerCase()
       if (negLower.includes('total') || pelLower.includes('total')) continue
 
-      const numVal = parseNumber(rows[r][c])
+      const numVal = parseNumber(sheet.getCell(r, c).value)
       if (numVal === null) continue // dropna
 
       const key = `${kode}|||${produk}|||${neg}|||${pel}`
@@ -135,8 +228,9 @@ export async function transformExcelLocally(data, onProgress) {
 
   if (onProgress) onProgress(55)
 
-  const wMap = extractMatrix(sheets[0], 'berat')
-  const vMap = extractMatrix(sheets[1], 'nilai')
+  // Match the provided result workbook: first matrix supplies Nilai, second supplies Berat.
+  const vMap = extractMatrix(sheets[0], 'nilai')
+  const wMap = extractMatrix(sheets[1], 'berat')
 
   // Outer merge on [Kode, Produk, Negara, Pelabuhan]
   const allKeys = new Set([...wMap.keys(), ...vMap.keys()])
@@ -146,9 +240,9 @@ export async function transformExcelLocally(data, onProgress) {
     const w = wMap.get(key) || {}
     const v = vMap.get(key) || {}
     const [kode, produk, negara, pelabuhan] = key.split('|||')
-    const berat = w.berat !== undefined ? w.berat : null
+    const berat = w.berat !== undefined ? w.berat / 1000 : null
     const nilai = v.nilai !== undefined ? v.nilai : null
-    const beratTon = berat !== null ? berat / 1000.0 : null
+    const beratTon = berat !== null ? berat / 1000 : null
 
     merged.push({
       kode,
@@ -184,7 +278,7 @@ export async function transformExcelLocally(data, onProgress) {
     { header: 'Produk', key: 'produk', width: 36 },
     { header: 'Negara', key: 'negara', width: 22 },
     { header: 'Pelabuhan', key: 'pelabuhan', width: 22 },
-    { header: 'Berat', key: 'berat', width: 16, style: { numFmt: '#,##0.00' } },
+    { header: 'Berat', key: 'berat', width: 16, style: { numFmt: '#,##0.000' } },
     { header: 'Nilai', key: 'nilai', width: 16, style: { numFmt: '#,##0.00' } },
     { header: 'Berat (Ton)', key: 'beratTon', width: 16, style: { numFmt: '#,##0.000' } },
   ]

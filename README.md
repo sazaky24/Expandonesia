@@ -12,9 +12,10 @@ FastWork Desktop adalah aplikasi Windows untuk menerjemahkan teks pada peta cura
 
 Fitur Excel mendukung format matriks berikut:
 
-- Sheet pertama berisi matriks berat: baris negara dan pelabuhan di bagian atas, kode HS di kolom A.
-- Sheet kedua berisi matriks nilai dengan susunan serupa.
+- Dua sheet matriks dipetakan ke `Nilai` dan `Berat` sesuai susunan pada workbook contoh hasil.
 - Sel gabungan pada baris negara ditangani dengan pengisian nilai ke kolom berikutnya.
+- Header judul sebelum baris negara/pelabuhan diabaikan; baris atau kolom yang ditandai kuning juga dilewati.
+- Nilai pada hasil mengikuti urutan kolom di `Contoh Hasil.xlsx`; `Berat (Ton)` dihitung dari `Berat` dibagi 1.000.
 - Hasil berupa tabel dengan kolom `Kode`, `Produk`, `Negara`, `Pelabuhan`, `Berat`, `Nilai`, dan `Berat (Ton)`.
 
 ### Peta cuaca

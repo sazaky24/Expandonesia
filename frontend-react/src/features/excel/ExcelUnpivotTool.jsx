@@ -109,14 +109,14 @@ export default function ExcelUnpivotTool({ notify, useLocalEngine = true }) {
           </span>
         </div>
         <p className="mt-1 text-[13px] leading-relaxed text-slate-500">
-          Ubah Excel matriks menjadi tabel relasional langsung di prosesor HP Anda tanpa perlu laptop menyala.
+          Ubah Excel matriks menjadi tabel datar. Kolom Berat (Ton) dihitung dari Berat dibagi 1.000.
         </p>
       </header>
 
       <StepCard
         step="1"
         title="Pilih file Excel"
-        subtitle="Satu workbook berisi dua matriks: sheet pertama = berat, sheet kedua = nilai."
+        subtitle="Satu workbook berisi dua matriks berat dan nilai. Baris/kolom berpita kuning dilewati."
       >
         <input
           id="excel-upload"
@@ -156,9 +156,8 @@ export default function ExcelUnpivotTool({ notify, useLocalEngine = true }) {
           <div className="flex items-start gap-2 text-[12px] leading-relaxed text-slate-500">
             <Upload className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              Kolom A baris 1–2 dipakai sebagai label <strong>Kode</strong> dan{' '}
-              <strong>Produk</strong>; baris 0 berisi <strong>Negara</strong> (boleh merged cell) dan
-              baris 1 berisi <strong>Pelabuhan</strong>.
+              Baris <strong>Negara</strong> dan <strong>Pelabuhan</strong> dikenali dari label atau
+              susunan header; nama negara pada sel gabungan diisi ke kolom berikutnya.
             </span>
           </div>
         )}
@@ -167,7 +166,7 @@ export default function ExcelUnpivotTool({ notify, useLocalEngine = true }) {
       <StepCard
         step="2"
         title="Jalankan transformasi"
-        subtitle="Workbook dibaca di memori server, di-unpivot, lalu dikirim kembali sebagai .xlsx."
+        subtitle="Workbook dibaca di memori, baris/kolom kuning dilewati, lalu data diubah menjadi tabel datar."
       >
         <PrimaryButton
           icon={Zap}
@@ -183,8 +182,8 @@ export default function ExcelUnpivotTool({ notify, useLocalEngine = true }) {
             <ProgressBar value={progress || 4} />
             <p className="text-[11px] text-slate-500">
               {progress >= 100
-                ? 'Backend sedang mengolah data…'
-                : `Mengunggah file ${progress}%…`}
+                ? 'Menyimpan hasil…'
+                : `Memproses Excel… ${progress}%`}
             </p>
           </div>
         ) : null}
@@ -217,7 +216,7 @@ export default function ExcelUnpivotTool({ notify, useLocalEngine = true }) {
       ) : null}
 
       <p className="px-1 pb-2 text-center text-[11px] leading-relaxed text-slate-400">
-        Backend bersifat stateless — tidak ada file yang pernah ditulis ke disk.
+        Berat (Ton) = Berat ÷ 1.000. Pita kuning pada baris atau kolom dilewati; file asli tidak diubah.
       </p>
     </div>
   )

@@ -315,6 +315,37 @@ test('long translated titles are fitted inside the title cell', () => {
   assert.ok(title.box[0] >= 140 && title.box[2] <= 480, 'cover box should stay in the title cell')
 })
 
+test('rainfall forecast is translated as a phrase in the right word order', () => {
+  const width = 800
+  const height = 300
+  const imageData = { data: new Uint8ClampedArray(width * height * 4).fill(255), width, height }
+  const cell = { index: 1, x0: 260, x1: 520 }
+  const cases = [
+    [
+      { text: 'PRAKIRAAN', bbox: { x0: 300, y0: 40, x1: 400, y1: 70 }, confidence: 95 },
+      { text: 'CURAH', bbox: { x0: 405, y0: 40, x1: 460, y1: 70 }, confidence: 95 },
+      { text: 'HUJAN', bbox: { x0: 465, y0: 40, x1: 515, y1: 70 }, confidence: 95 },
+    ],
+    [
+      { text: 'PRAKIRAAN', bbox: { x0: 300, y0: 40, x1: 400, y1: 70 }, confidence: 95 },
+      { text: 'CURAHHUJAN', bbox: { x0: 405, y0: 40, x1: 515, y1: 70 }, confidence: 95 },
+    ],
+  ]
+
+  for (const words of cases) {
+    const { edits } = planPanelEdits({
+      lines: [{ words }],
+      imageData,
+      cells: [cell],
+      panelHeight: height,
+      measure: (text, size) => text.length * size * 0.55,
+    })
+
+    assert.equal(edits.length, 1, `the full phrase should produce one edit: ${JSON.stringify(edits)}`)
+    assert.equal(edits[0].text, 'RAINFALL FORECAST')
+  }
+})
+
 test('low-confidence KETERANGAN OCR is still translated consistently', () => {
   const width = 800
   const height = 300
