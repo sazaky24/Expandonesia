@@ -216,8 +216,8 @@ test('damaged-map regression: translate fused title and preserve update stamp st
   const { edits, stats } = await planMapTranslations(imageData, { sourceCanvas: canvas })
   const texts = edits.map((edit) => edit.text)
 
-  assert.ok(texts.includes('PRECIPITATION CHARACTERISTICS FORECAST'), `title missing: ${texts}`)
-  assert.ok(texts.includes('PRECIPITATION CHARACTERISTICS :'), `fused header missing: ${texts}`)
+  assert.ok(texts.includes('PRECIPITATION ANOMALY FORECAST'), `title missing: ${texts}`)
+  assert.ok(texts.includes('ANOMALY :'), `fused header missing: ${texts}`)
   assert.ok(texts.includes('OVERSEAS'), `fused overseas label missing: ${texts}`)
   assert.ok(texts.includes('Update : 01 August 2026'), `update stamp missing: ${texts}`)
   assert.equal(stats.title, true)
@@ -252,7 +252,7 @@ test('latest result: detect the left panel edge and translate KETERANGAN', async
 
   const { edits } = await planMapTranslations(imageData, { sourceCanvas: canvas })
   const legend = edits.find((edit) => edit.text === 'LEGEND :')
-  const header = edits.find((edit) => edit.text === 'PRECIPITATION MM :')
+  const header = edits.find((edit) => edit.text?.endsWith(' (mm):'))
   assert.ok(legend, `KETERANGAN should be translated: ${JSON.stringify(edits)}`)
   assert.ok(header, 'measurement header should be redrawn at a smaller size')
   assert.ok(header.size < 30, `measurement header font remains too large: ${header.size}`)
@@ -306,7 +306,7 @@ test('long translated titles are fitted inside the title cell', () => {
     },
   })
 
-  const title = edits.find((edit) => edit.text === 'PRECIPITATION CHARACTERISTICS FORECAST')
+  const title = edits.find((edit) => edit.text === 'PRECIPITATION ANOMALY FORECAST')
   assert.ok(title, `translated title missing: ${JSON.stringify(edits)}`)
   ctx.font = `bold ${title.size}px ${FONT_FAMILY}`
   const renderedWidth = ctx.measureText(title.text).width

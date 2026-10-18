@@ -158,10 +158,9 @@ function categoryRowHeight(imageData, box, cell) {
  * @param {Array<{index:number,x0:number,x1:number}>} params.cells panel cells
  * @param {number} params.panelHeight
  * @param {(text:string,size:number)=>number} params.measure text width in px
- * @param {string} [params.mapType='all'] jenis peta yang difilter ('all' = semua)
  * @returns {{edits:Array<object>, stats:object}}
  */
-export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, mapType = 'all' }) {
+export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }) {
   const minHeight = Math.max(5, Math.floor(panelHeight * RENDER.minHeightFrac))
   const edits = []
   const stats = { lines: 0, translated: 0, title: false, date: false, labels: 0 }
@@ -244,11 +243,17 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
         rawKeys.includes('mm') &&
         ((rawKeys.includes('curah') && rawKeys.includes('hujan')) ||
           rawKeys.includes('rainfall') ||
-          rawKeys.includes('precipitation'))
+          rawKeys.includes('precipitation') ||
+          rawKeys.includes('anomali') ||
+          rawKeys.includes('sifat'))
       if (hasPrecipitationMmHeader) {
+        // Tentukan kata depan berdasarkan token OCR yang terdeteksi
+        // "sifat hujan" dan "anomali" sama-sama berarti anomaly
+        let mmPrefix = 'PRECIPITATION'
+        if (rawKeys.includes('anomali') || rawKeys.includes('sifat')) mmPrefix = 'ANOMALY'
         plans.push({
           kind: 'text',
-          text: 'PRECIPITATION MM :',
+          text: `${mmPrefix} (mm):`,
           box: unionBoxes(words.map((w) => w.bbox)),
           words,
           cell,
@@ -259,7 +264,7 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
       }
 
       // --- translated runs --------------------------------------------------
-      for (const run of translateRuns(keys, mapType)) {
+      for (const run of translateRuns(keys)) {
         const isCategoryLabel =
           cell.index === 1 &&
           /^HIGH$/i.test(run.text) &&

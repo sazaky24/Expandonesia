@@ -6,7 +6,6 @@ import { Pill, PrimaryButton, ProgressBar, StepCard } from '../../components/ui'
 import { saveFile } from '../../lib/download'
 import { formatBytes } from '../../lib/format'
 import { remasterMapLocally } from '../../lib/localMap'
-import { MAP_TYPES } from '../../lib/vocabId'
 
 const MAX_BYTES = 25 * 1024 * 1024
 
@@ -18,7 +17,6 @@ export default function TranslateMapTool({ notify }) {
   const [view, setView] = useState('result') // 'original' | 'result'
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [mapType, setMapType] = useState('all')
 
   useEffect(
     () => () => {
@@ -91,7 +89,7 @@ export default function TranslateMapTool({ notify }) {
       // 100% client-side: OCR + rewrite run in this tab (see src/lib/localMap.js).
       const { blob } = await remasterMapLocally(file, (pct) => {
         setProgress(pct)
-      }, mapType)
+      })
       setResult({ blob, url: URL.createObjectURL(blob) })
       setView('result')
       notify('success', 'Peta selesai diterjemahkan di HP.')
@@ -198,23 +196,6 @@ export default function TranslateMapTool({ notify }) {
         title="Terjemahkan peta"
         subtitle="Teks pada panel peta dideteksi, lalu terjemahannya ditempatkan kembali di posisi semula."
       >
-        <div className="mb-3">
-          <label className="block text-[12px] font-semibold text-slate-700 mb-1.5">
-            Jenis peta
-          </label>
-          <select
-            value={mapType}
-            onChange={(e) => setMapType(e.target.value)}
-            disabled={busy}
-            className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-[13px] text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {MAP_TYPES.map((mt) => (
-              <option key={mt.id} value={mt.id}>
-                {mt.label}
-              </option>
-            ))}
-          </select>
-        </div>
         <PrimaryButton
           icon={ArrowRightLeft}
           onClick={handleTranslate}
