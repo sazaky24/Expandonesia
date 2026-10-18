@@ -244,7 +244,7 @@ function mapBox(box, scale, cropBox) {
  */
 export async function planMapTranslations(
   imageData,
-  { sourceCanvas, onProgress, lang = OCR_LANG } = {},
+  { sourceCanvas, onProgress, lang = OCR_LANG, mapType = 'all' } = {},
 ) {
   const panel = analyzePanel(imageData)
   if (!panel || !panel.cells.length) return { edits: [], stats: null, panel: null }
@@ -283,6 +283,7 @@ export async function planMapTranslations(
     cells: panel.cells,
     panelHeight: panel.panelBottom - panel.panelTop,
     measure: measureText,
+    mapType,
   })
   onProgress?.(0.9)
   return { edits, stats, panel }
@@ -335,7 +336,7 @@ function loadImage(source) {
  * Remaster + translate the map locally.
  * @returns {Promise<{blob: Blob, stats: object|null}>}
  */
-export async function remasterMapLocally(source, onProgress) {
+export async function remasterMapLocally(source, onProgress, mapType = 'all') {
   onProgress?.(0.15)
 
   const image = await loadImage(source)
@@ -348,6 +349,7 @@ export async function remasterMapLocally(source, onProgress) {
       const pct = Math.round(fraction * 100)
       if (pct > 35) onProgress?.(pct)
     },
+    mapType,
   })
 
   if (!stats) {

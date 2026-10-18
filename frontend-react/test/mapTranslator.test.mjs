@@ -155,8 +155,8 @@ test('map translator: Indonesian panel → English, map body untouched', async (
   const texts = edits.map((edit) => edit.text)
   const summary = JSON.stringify(texts)
   assert.ok(stats, 'planner should report statistics')
-  assert.ok(texts.includes('RAINFALL ANOMALY MAP'), `title missing: ${summary}`)
-  assert.ok(texts.includes('RAINFALL ANOMALY'), `table header missing: ${summary}`)
+  assert.ok(texts.includes('PRECIPITATION ANOMALY MAP'), `title missing: ${summary}`)
+  assert.ok(texts.includes('PRECIPITATION ANOMALY'), `table header missing: ${summary}`)
   assert.ok(texts.includes('JULY 2026'), `date line missing: ${summary}`)
   assert.ok(texts.includes('Below Normal'), `Below Normal missing: ${summary}`)
   assert.ok(texts.includes('Above Normal'), `Above Normal missing: ${summary}`)
@@ -192,7 +192,7 @@ test('map translator: Indonesian panel → English, map body untouched', async (
   }
   // "NORMAL" is identical in both languages, so it must survive untouched
   // (the "115" range of its table row proves the row was not swallowed).
-  for (const expected of ['RAINFALL ANOMALY MAP', 'BELOW NORMAL', 'ABOVE NORMAL', 'LEGEND', '115']) {
+  for (const expected of ['PRECIPITATION ANOMALY MAP', 'BELOW NORMAL', 'ABOVE NORMAL', 'LEGEND', '115']) {
     assert.ok(flat.includes(expected), `expected "${expected}" in output OCR: ${flat}`)
   }
 
@@ -216,8 +216,8 @@ test('damaged-map regression: translate fused title and preserve update stamp st
   const { edits, stats } = await planMapTranslations(imageData, { sourceCanvas: canvas })
   const texts = edits.map((edit) => edit.text)
 
-  assert.ok(texts.includes('RAINFALL CHARACTERISTICS FORECAST'), `title missing: ${texts}`)
-  assert.ok(texts.includes('RAINFALL CHARACTERISTICS :'), `fused header missing: ${texts}`)
+  assert.ok(texts.includes('PRECIPITATION CHARACTERISTICS FORECAST'), `title missing: ${texts}`)
+  assert.ok(texts.includes('PRECIPITATION CHARACTERISTICS :'), `fused header missing: ${texts}`)
   assert.ok(texts.includes('OVERSEAS'), `fused overseas label missing: ${texts}`)
   assert.ok(texts.includes('Update : 01 August 2026'), `update stamp missing: ${texts}`)
   assert.equal(stats.title, true)
@@ -252,7 +252,7 @@ test('latest result: detect the left panel edge and translate KETERANGAN', async
 
   const { edits } = await planMapTranslations(imageData, { sourceCanvas: canvas })
   const legend = edits.find((edit) => edit.text === 'LEGEND :')
-  const header = edits.find((edit) => edit.text === 'RAINFALL MM :')
+  const header = edits.find((edit) => edit.text === 'PRECIPITATION MM :')
   assert.ok(legend, `KETERANGAN should be translated: ${JSON.stringify(edits)}`)
   assert.ok(header, 'measurement header should be redrawn at a smaller size')
   assert.ok(header.size < 30, `measurement header font remains too large: ${header.size}`)
@@ -306,7 +306,7 @@ test('long translated titles are fitted inside the title cell', () => {
     },
   })
 
-  const title = edits.find((edit) => edit.text === 'RAINFALL CHARACTERISTICS FORECAST')
+  const title = edits.find((edit) => edit.text === 'PRECIPITATION CHARACTERISTICS FORECAST')
   assert.ok(title, `translated title missing: ${JSON.stringify(edits)}`)
   ctx.font = `bold ${title.size}px ${FONT_FAMILY}`
   const renderedWidth = ctx.measureText(title.text).width
@@ -342,7 +342,7 @@ test('rainfall forecast is translated as a phrase in the right word order', () =
     })
 
     assert.equal(edits.length, 1, `the full phrase should produce one edit: ${JSON.stringify(edits)}`)
-    assert.equal(edits[0].text, 'RAINFALL FORECAST')
+    assert.equal(edits[0].text, 'PRECIPITATION FORECAST')
   }
 })
 

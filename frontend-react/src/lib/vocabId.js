@@ -37,9 +37,9 @@ for (const [english, keys] of MONTH_KEYS) {
 /** Single-word fallbacks (lower-case keys, punctuation stripped). */
 export const ID_EN_TOKENS = {
   peta: 'MAP',
-  hujan: 'RAINFALL',
-  curah: 'RAINFALL',
-  curahhujan: 'RAINFALL',
+  hujan: 'PRECIPITATION',
+  curah: 'PRECIPITATION',
+  curahhujan: 'PRECIPITATION',
   anomali: 'ANOMALY',
   prakiraan: 'FORECAST',
   prediksi: 'FORECAST',
@@ -90,26 +90,68 @@ export const ID_EN_TOKENS = {
   mm: 'MM',
   ton: 'TON',
   sifat: 'CHARACTERISTICS',
-  sifathujan: 'RAINFALL CHARACTERISTICS',
-  sifatrainfall: 'RAINFALL CHARACTERISTICS',
+  sifathujan: 'PRECIPITATION CHARACTERISTICS',
+  sifatrainfall: 'PRECIPITATION CHARACTERISTICS',
   overseasnegeri: 'OVERSEAS',
   luarnegeri: 'OVERSEAS',
+}
+
+/**
+ * Jenis peta yang dapat dipilih pengguna untuk membatasi terjemahan.
+ * 'all' = terjemahkan semua (perilaku default saat ini).
+ */
+export const MAP_TYPES = [
+  { id: 'all', label: 'Semua Jenis Peta' },
+  { id: 'rainfall', label: 'Curah Hujan' },
+  { id: 'anomaly', label: 'Anomali Curah Hujan' },
+  { id: 'temperature', label: 'Suhu Udara' },
+  { id: 'wind', label: 'Angin' },
+  { id: 'humidity', label: 'Kelembapan Udara' },
+  { id: 'pressure', label: 'Tekanan Udara' },
+  { id: 'weather', label: 'Cuaca Umum' },
+]
+
+/** Kata kunci yang menandakan frasa termasuk dalam jenis peta tertentu. */
+const MAP_TYPE_KEYWORDS = {
+  rainfall: ['curah', 'hujan', 'curahhujan', 'rainfall', 'precipitation'],
+  anomaly: ['anomali', 'anomaly'],
+  temperature: ['suhu', 'udara', 'temperature'],
+  wind: ['angin', 'wind'],
+  humidity: ['kelembapan', 'kelembaban', 'humidity'],
+  pressure: ['tekanan', 'pressure'],
+  weather: ['cuaca', 'weather'],
+}
+
+/** Cek apakah suatu frasa (array kata) termasuk dalam jenis peta yang dipilih. */
+export function phraseMatchesMapType(words, mapType) {
+  if (mapType === 'all') return true
+  const keywords = MAP_TYPE_KEYWORDS[mapType]
+  if (!keywords) return true
+  return words.some((w) => keywords.includes(w))
+}
+
+/** Cek apakah teks terjemahan tunggal (token) termasuk dalam jenis peta. */
+export function tokenMatchesMapType(tokenKey, mapType) {
+  if (mapType === 'all') return true
+  const keywords = MAP_TYPE_KEYWORDS[mapType]
+  if (!keywords) return true
+  return keywords.some((k) => tokenKey.includes(k) || tokenKey === k)
 }
 
 /** Word-sequence rules; the first matching (longest) entry wins. */
 export const ID_EN_PHRASES = [
   // ---- full titles (the title cell is replaced as a single line) ----------
   [['peta', 'prakiraan', 'anomali', 'curah', 'hujan'], 'PRECIPITATION ANOMALY FORECAST MAP'],
-  [['prediksi', 'sifat', 'hujan'], 'RAINFALL CHARACTERISTICS FORECAST'],
-  [['prediksi', 'sifathujan'], 'RAINFALL CHARACTERISTICS FORECAST'],
-  [['prediksi', 'sifatrainfall'], 'RAINFALL CHARACTERISTICS FORECAST'],
-  [['peta', 'prakiraan', 'anomali', 'hujan'], 'RAINFALL ANOMALY FORECAST MAP'],
+  [['prediksi', 'sifat', 'hujan'], 'PRECIPITATION CHARACTERISTICS FORECAST'],
+  [['prediksi', 'sifathujan'], 'PRECIPITATION CHARACTERISTICS FORECAST'],
+  [['prediksi', 'sifatrainfall'], 'PRECIPITATION CHARACTERISTICS FORECAST'],
+  [['peta', 'prakiraan', 'anomali', 'hujan'], 'PRECIPITATION ANOMALY FORECAST MAP'],
   [['peta', 'prakiraan', 'curah', 'hujan'], 'PRECIPITATION FORECAST MAP'],
   [['peta', 'analisis', 'anomali', 'curah', 'hujan'], 'PRECIPITATION ANOMALY ANALYSIS MAP'],
-  [['peta', 'analisis', 'anomali', 'hujan'], 'RAINFALL ANOMALY ANALYSIS MAP'],
+  [['peta', 'analisis', 'anomali', 'hujan'], 'PRECIPITATION ANOMALY ANALYSIS MAP'],
   [['peta', 'analisis', 'curah', 'hujan'], 'PRECIPITATION ANALYSIS MAP'],
-  [['peta', 'anomali', 'curah', 'hujan'], 'RAINFALL ANOMALY MAP'],
-  [['peta', 'anomali', 'hujan'], 'RAINFALL ANOMALY MAP'],
+  [['peta', 'anomali', 'curah', 'hujan'], 'PRECIPITATION ANOMALY MAP'],
+  [['peta', 'anomali', 'hujan'], 'PRECIPITATION ANOMALY MAP'],
   [['peta', 'prakiraan', 'anomali', 'suhu', 'udara'], 'TEMPERATURE ANOMALY FORECAST MAP'],
   [['peta', 'prakiraan', 'suhu', 'udara'], 'TEMPERATURE FORECAST MAP'],
   [['peta', 'anomali', 'suhu', 'udara'], 'TEMPERATURE ANOMALY MAP'],
@@ -123,19 +165,19 @@ export const ID_EN_PHRASES = [
 
   // ---- table headers -----------------------------------------------------
   [['prakiraan', 'anomali', 'curah', 'hujan'], 'PRECIPITATION ANOMALY FORECAST'],
-  [['prakiraan', 'anomali', 'hujan'], 'RAINFALL ANOMALY FORECAST'],
-  [['prakiraan', 'curah', 'hujan'], 'RAINFALL FORECAST'],
-  [['prakiraan', 'curahhujan'], 'RAINFALL FORECAST'],
-  [['prakiraan', 'hujan'], 'RAINFALL FORECAST'],
-  [['prediksi', 'curah', 'hujan'], 'RAINFALL FORECAST'],
-  [['prediksi', 'curahhujan'], 'RAINFALL FORECAST'],
-  [['prediksi', 'hujan'], 'RAINFALL FORECAST'],
+  [['prakiraan', 'anomali', 'hujan'], 'PRECIPITATION ANOMALY FORECAST'],
+  [['prakiraan', 'curah', 'hujan'], 'PRECIPITATION FORECAST'],
+  [['prakiraan', 'curahhujan'], 'PRECIPITATION FORECAST'],
+  [['prakiraan', 'hujan'], 'PRECIPITATION FORECAST'],
+  [['prediksi', 'curah', 'hujan'], 'PRECIPITATION FORECAST'],
+  [['prediksi', 'curahhujan'], 'PRECIPITATION FORECAST'],
+  [['prediksi', 'hujan'], 'PRECIPITATION FORECAST'],
   [['analisis', 'anomali', 'curah', 'hujan'], 'PRECIPITATION ANOMALY ANALYSIS'],
   [['analisis', 'curah', 'hujan'], 'PRECIPITATION ANALYSIS'],
-  [['anomali', 'curah', 'hujan'], 'RAINFALL ANOMALY'],
-  [['anomali', 'hujan'], 'RAINFALL ANOMALY'],
-  [['curah', 'hujan', 'bulanan'], 'MONTHLY RAINFALL'],
-  [['curah', 'hujan'], 'RAINFALL'],
+  [['anomali', 'curah', 'hujan'], 'PRECIPITATION ANOMALY'],
+  [['anomali', 'hujan'], 'PRECIPITATION ANOMALY'],
+  [['curah', 'hujan', 'bulanan'], 'MONTHLY PRECIPITATION'],
+  [['curah', 'hujan'], 'PRECIPITATION'],
   [['anomali', 'suhu'], 'TEMPERATURE ANOMALY'],
   [['suhu', 'udara'], 'AIR TEMPERATURE'],
   [['tekanan', 'udara'], 'AIR PRESSURE'],
@@ -144,7 +186,7 @@ export const ID_EN_PHRASES = [
   [['kelembapan', 'udara'], 'AIR HUMIDITY'],
   [['kelembaban', 'udara'], 'AIR HUMIDITY'],
   [['hari', 'hujan'], 'RAINY DAYS'],
-  [['sifat', 'hujan'], 'RAINFALL CHARACTERISTICS'],
+  [['sifat', 'hujan'], 'PRECIPITATION CHARACTERISTICS'],
 
   // ---- legend / row labels ----------------------------------------------
   [['di', 'bawah', 'normal'], 'Below Normal'],
@@ -211,9 +253,12 @@ export function matchYear(raw) {
 
 /**
  * Translate at a position using phrase rules first, then single tokens.
+ * @param {string[]} keys - normalized token keys
+ * @param {number} start - starting index
+ * @param {string} [mapType] - optional map type filter ('all' = no filter)
  * @returns {{text: string, consumed: number}|null}
  */
-export function translateAt(keys, start) {
+export function translateAt(keys, start, mapType) {
   const list = PHRASES_BY_FIRST.get(keys[start])
   if (list) {
     for (const phrase of list) {
@@ -224,15 +269,19 @@ export function translateAt(keys, start) {
           break
         }
       }
-      if (ok) return { text: phrase.english, consumed: phrase.words.length }
+      if (ok && phraseMatchesMapType(phrase.words, mapType)) {
+        return { text: phrase.english, consumed: phrase.words.length }
+      }
     }
   }
   const single = ID_EN_TOKENS[keys[start]]
-  if (single && !isNumericKey(keys[start])) return { text: single, consumed: 1 }
+  if (single && !isNumericKey(keys[start]) && tokenMatchesMapType(keys[start], mapType)) {
+    return { text: single, consumed: 1 }
+  }
   return null
 }
 
-/** Collapse "RAINFALL RAINFALL" → "RAINFALL" and tidy spacing. */
+/** Collapse "PRECIPITATION PRECIPITATION" → "PRECIPITATION" and tidy spacing. */
 export function tidyEnglish(words) {
   const flat = Array.isArray(words) ? words : String(words).split(' ')
   const out = []
@@ -247,13 +296,15 @@ export function tidyEnglish(words) {
 
 /**
  * Translate an entire token list into contiguous translated runs.
+ * @param {string[]} keys - normalized token keys
+ * @param {string} [mapType] - optional map type filter ('all' = no filter)
  * @returns {Array<{start:number, end:number, text:string}>}
  */
-export function translateRuns(keys) {
+export function translateRuns(keys, mapType) {
   const runs = []
   let i = 0
   while (i < keys.length) {
-    const first = translateAt(keys, i)
+    const first = translateAt(keys, i, mapType)
     if (!first) {
       i += 1
       continue
@@ -263,7 +314,7 @@ export function translateRuns(keys) {
     i += first.consumed
     // Keep absorbing adjacent translatable tokens ("Batas Propinsi" + ":").
     for (;;) {
-      const next = translateAt(keys, i)
+      const next = translateAt(keys, i, mapType)
       if (!next) break
       parts.push(next.text)
       i += next.consumed

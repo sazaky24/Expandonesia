@@ -158,9 +158,10 @@ function categoryRowHeight(imageData, box, cell) {
  * @param {Array<{index:number,x0:number,x1:number}>} params.cells panel cells
  * @param {number} params.panelHeight
  * @param {(text:string,size:number)=>number} params.measure text width in px
+ * @param {string} [params.mapType='all'] jenis peta yang difilter ('all' = semua)
  * @returns {{edits:Array<object>, stats:object}}
  */
-export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }) {
+export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, mapType = 'all' }) {
   const minHeight = Math.max(5, Math.floor(panelHeight * RENDER.minHeightFrac))
   const edits = []
   const stats = { lines: 0, translated: 0, title: false, date: false, labels: 0 }
@@ -237,16 +238,17 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
         continue
       }
 
-      const hasRainfallMmHeader =
+      const hasPrecipitationMmHeader =
         cell.index === 1 &&
         entryIndex === 0 &&
         rawKeys.includes('mm') &&
         ((rawKeys.includes('curah') && rawKeys.includes('hujan')) ||
-          rawKeys.includes('rainfall'))
-      if (hasRainfallMmHeader) {
+          rawKeys.includes('rainfall') ||
+          rawKeys.includes('precipitation'))
+      if (hasPrecipitationMmHeader) {
         plans.push({
           kind: 'text',
-          text: 'RAINFALL MM :',
+          text: 'PRECIPITATION MM :',
           box: unionBoxes(words.map((w) => w.bbox)),
           words,
           cell,
@@ -257,7 +259,7 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
       }
 
       // --- translated runs --------------------------------------------------
-      for (const run of translateRuns(keys)) {
+      for (const run of translateRuns(keys, mapType)) {
         const isCategoryLabel =
           cell.index === 1 &&
           /^HIGH$/i.test(run.text) &&
