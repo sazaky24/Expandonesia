@@ -242,7 +242,6 @@ export async function transformExcelLocally(data, onProgress) {
     const [kode, produk, negara, pelabuhan] = key.split('|||')
     const berat = w.berat !== undefined ? w.berat / 1000 : null
     const nilai = v.nilai !== undefined ? v.nilai : null
-    const beratTon = berat !== null ? berat / 1000 : null
 
     merged.push({
       kode,
@@ -251,7 +250,6 @@ export async function transformExcelLocally(data, onProgress) {
       pelabuhan,
       berat,
       nilai,
-      beratTon,
     })
   }
 
@@ -278,9 +276,8 @@ export async function transformExcelLocally(data, onProgress) {
     { header: 'Produk', key: 'produk', width: 36 },
     { header: 'Negara', key: 'negara', width: 22 },
     { header: 'Pelabuhan', key: 'pelabuhan', width: 22 },
-    { header: 'Berat', key: 'berat', width: 16, style: { numFmt: '#,##0.000' } },
+    { header: 'Berat', key: 'berat', width: 18, style: { numFmt: '#,##0.0," ton"' } },
     { header: 'Nilai', key: 'nilai', width: 16, style: { numFmt: '#,##0.00' } },
-    { header: 'Berat (Ton)', key: 'beratTon', width: 16, style: { numFmt: '#,##0.000' } },
   ]
 
   // Header row styling
@@ -302,7 +299,6 @@ export async function transformExcelLocally(data, onProgress) {
       pelabuhan: row.pelabuhan,
       berat: row.berat,
       nilai: row.nilai,
-      beratTon: row.beratTon,
     })
   }
 
