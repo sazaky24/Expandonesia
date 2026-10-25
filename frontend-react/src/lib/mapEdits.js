@@ -160,7 +160,11 @@ function categoryRowHeight(imageData, box, cell) {
  * @param {(text:string,size:number)=>number} params.measure text width in px
  * @returns {{edits:Array<object>, stats:object}}
  */
-export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }) {
+export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, options = {} }) {
+  const {
+    equalizeHeaderFont = true,
+    leftAlignCategoryLabels = true,
+  } = options
   const minHeight = Math.max(5, Math.floor(panelHeight * RENDER.minHeightFrac))
   const edits = []
   const stats = { lines: 0, translated: 0, title: false, date: false, labels: 0 }
@@ -265,9 +269,14 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
 
       // --- translated runs --------------------------------------------------
       for (const run of translateRuns(keys)) {
+        // Label baris kategori (HIGH, LOW, MEDIUM, dst.) ditulis rata kiri pada
+        // setiap baris agar huruf pertamanya selaris vertikal — tidak ada lagi
+        // geser kiri kanan karena teks sebelumnya disejajarkan ke tengah.
+        const CATEGORY_LABEL =
+          /^(HIGH|LOW|MEDIUM|NORMAL|AVERAGE|BELOW NORMAL|ABOVE NORMAL|VERY HIGH|MODERATELY HIGH|VERY LOW|VERY DRY|VERY WET|MODERATELY DRY|MODERATELY WET)$/i
         const isCategoryLabel =
           cell.index === 1 &&
-          /^HIGH$/i.test(run.text) &&
+          CATEGORY_LABEL.test(run.text) &&
           keys[run.start - 1] !== 'very'
         plans.push({
           kind: 'text',
@@ -361,13 +370,13 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
         ? plan.dateType === 'update' ? 0.7 : 1
         : plan.legendLabel
           ? 0.95
+          : plan.compactHeader
+            ? equalizeHeaderFont ? 0.95 : 0.9
           : plan.categoryLabel
             ? rowHeight ? 0.34 : 0.95
-        : plan.compactHeader
-          ? 0.9
-          : plan.compact
-            ? 1.2
-            : RENDER.fontFactor
+        : plan.compact
+          ? 1.2
+          : RENDER.fontFactor
       const panelDateSize =
         plan.kind === 'date' && plan.dateType === 'monthYear'
           ? Math.round(panelHeight * 0.07)
@@ -387,10 +396,14 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure }
       const centre = plan.legendLabel
         ? Math.max((plan.box[0] + plan.box[2]) / 2, textLeft + targetWidth / 2)
         : (plan.box[0] + plan.box[2]) / 2
-      const textX = Math.max(
-        textLeft + targetWidth / 2,
-        Math.min(centre, textRight - targetWidth / 2),
-      )
+      const textX = leftAlignCategoryLabels && plan.categoryLabel
+        // Rata kiri: teks ditempel pada textLeft, sehingga huruf pertama semua
+        // baris kategori berada di posisi x yang sama.
+        ? Math.min(textLeft + targetWidth / 2, textRight - targetWidth / 2)
+        : Math.max(
+            textLeft + targetWidth / 2,
+            Math.min(centre, textRight - targetWidth / 2),
+          )
       const tx0 = textX - targetWidth / 2
       const tx1 = textX + targetWidth / 2
 
