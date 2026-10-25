@@ -1,7 +1,7 @@
 {
   "name": "frontend-react",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -36,6 +36,7 @@
   "build": {
     "appId": "com.expandonesia.mobile",
     "productName": "Expandonesia Mobile",
+    "artifactName": "Expandonesia.Mobile.Setup.${version}.${ext}",
     "directories": {
       "output": "release"
     },
