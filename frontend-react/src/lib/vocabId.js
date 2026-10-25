@@ -36,6 +36,16 @@ for (const [english, keys] of MONTH_KEYS) {
 
 /** Single-word fallbacks (lower-case keys, punctuation stripped). */
 export const ID_EN_TOKENS = {
+  // Preserve English title terms so an explicitly selected title can replace them.
+  map: 'MAP',
+  precipitation: 'PRECIPITATION',
+  anomaly: 'ANOMALY',
+  analysis: 'ANALYSIS',
+  legend: 'LEGEND',
+  low: 'LOW',
+  medium: 'MEDIUM',
+  high: 'HIGH',
+  very: 'VERY',
   peta: 'MAP',
   hujan: 'PRECIPITATION',
   curah: 'PRECIPITATION',
@@ -151,7 +161,7 @@ export const ID_EN_PHRASES = [
   // tesseract sometimes glues "DI BAWAH"/"DI ATAS" into a single word.
   [['dibawah', 'normal'], 'Below Normal'],
   [['diatas', 'normal'], 'Above Normal'],
-  [['sangat', 'tinggi'], 'Very High'],
+  [['sangat', 'tinggi'], 'VERY HIGH'],
   [['cukup', 'tinggi'], 'Moderately High'],
   [['agak', 'tinggi'], 'Moderately High'],
   [['sangat', 'rendah'], 'Very Low'],

@@ -23,6 +23,13 @@ export const RENDER = {
   minHeightFrac: 0.008, // glyph height relative to the panel height
 }
 
+const TITLE_CHOICES = {
+  'precipitation-forecast': 'PRECIPITATION FORECAST MAP',
+  'precipitation-anomaly-forecast': 'PRECIPITATION ANOMALY FORECAST MAP',
+  'precipitation-analysis': 'PRECIPITATION ANALYSIS MAP',
+  'precipitation-anomaly': 'PRECIPITATION ANOMALY MAP',
+}
+
 /** Union of OCR boxes. */
 export function unionBoxes(boxes) {
   let x0 = Infinity
@@ -160,15 +167,24 @@ function categoryRowHeight(imageData, box, cell) {
  * @param {(text:string,size:number)=>number} params.measure text width in px
  * @returns {{edits:Array<object>, stats:object}}
  */
-export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, options = {} }) {
-  const {
-    equalizeHeaderFont = true,
-    leftAlignCategoryLabels = true,
-  } = options
+export function planPanelEdits({
+  lines,
+  imageData,
+  cells,
+  panelHeight,
+  panelTop = 0,
+  measure,
+  options = {},
+}) {
+  const { titleChoice = 'auto' } = options
+  if (titleChoice !== 'auto' && !Object.hasOwn(TITLE_CHOICES, titleChoice)) {
+    throw new Error(`Pilihan judul peta tidak valid: ${titleChoice}`)
+  }
   const minHeight = Math.max(5, Math.floor(panelHeight * RENDER.minHeightFrac))
   const edits = []
   const stats = { lines: 0, translated: 0, title: false, date: false, labels: 0 }
   const perCell = new Map()
+  const planGroups = []
 
   for (const line of lines) {
     const words = prepareWords(line, imageData, minHeight)
@@ -248,13 +264,19 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
         ((rawKeys.includes('curah') && rawKeys.includes('hujan')) ||
           rawKeys.includes('rainfall') ||
           rawKeys.includes('precipitation') ||
+          rawKeys.includes('anomaly') ||
           rawKeys.includes('anomali') ||
           rawKeys.includes('sifat'))
       if (hasPrecipitationMmHeader) {
-        // Tentukan kata depan berdasarkan token OCR yang terdeteksi
-        // "sifat hujan" dan "anomali" sama-sama berarti anomaly
+        // Tentukan heading sesuai istilah anomaly yang terdeteksi.
         let mmPrefix = 'PRECIPITATION'
-        if (rawKeys.includes('anomali') || rawKeys.includes('sifat')) mmPrefix = 'ANOMALY'
+        if (
+          rawKeys.includes('anomaly') ||
+          rawKeys.includes('anomali') ||
+          rawKeys.includes('sifat')
+        ) {
+          mmPrefix = 'ANOMALY'
+        }
         plans.push({
           kind: 'text',
           text: `${mmPrefix} (mm):`,
@@ -263,6 +285,7 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
           cell,
           run: { start: 0, end: words.length },
           compactHeader: true,
+          panelHeader: true,
         })
         continue
       }
@@ -278,6 +301,7 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
           cell.index === 1 &&
           CATEGORY_LABEL.test(run.text) &&
           keys[run.start - 1] !== 'very'
+        const isLegendHeader = cell.index === 2 && /^LEGEND$/i.test(run.text)
         plans.push({
           kind: 'text',
           text: run.text,
@@ -286,6 +310,8 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
           cell,
           run,
           categoryLabel: isCategoryLabel,
+          compactHeader: isLegendHeader,
+          panelHeader: isLegendHeader,
           legendLabel: cell.index === 2 && /^(OVERSEAS|PROVINCIAL BORDERS)$/i.test(run.text),
           compact: (cell.index === 0 && /\bMAP\b|\bFORECAST\b/.test(run.text)) ||
             (cell.index === 1 && entryIndex === 0),
@@ -355,25 +381,146 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
       })
     }
 
+    planGroups.push(plans)
+  }
+
+  if (titleChoice !== 'auto') {
+    const titlePlans = planGroups
+      .flat()
+      .filter(
+        (plan) =>
+          plan.kind === 'text' &&
+          plan.cell.index === 0 &&
+          /\b(MAP|FORECAST|ANALYSIS|ANOMALY|PRECIPITATION)\b/i.test(plan.text),
+      )
+    if (titlePlans.length) {
+      const titlePlan = titlePlans.find((plan) => /\bMAP\b/i.test(plan.text)) || titlePlans[0]
+      titlePlan.text = TITLE_CHOICES[titleChoice]
+      titlePlan.forceRedraw = true
+      titlePlan.box = unionBoxes(titlePlans.map((plan) => plan.box))
+      titlePlan.height = median(titlePlans.map((plan) => plan.box[3] - plan.box[1]))
+      titlePlan.limit = { left: titlePlan.cell.x0, right: titlePlan.cell.x1 }
+      for (const plan of titlePlans) {
+        if (plan !== titlePlan) plan.drop = true
+      }
+    } else {
+      const titleCell = cells.find((cell) => cell.index === 0)
+      if (titleCell) {
+        const titleBox = [
+          titleCell.x0,
+          panelTop + Math.round(panelHeight * 0.03),
+          titleCell.x1,
+          panelTop + Math.round(panelHeight * 0.26),
+        ]
+        const syntheticWord = {
+          text: '',
+          bbox: {
+            x0: titleBox[0],
+            y0: titleBox[1],
+            x1: titleBox[2],
+            y1: titleBox[3],
+          },
+        }
+        planGroups.push([
+          {
+            kind: 'text',
+            text: TITLE_CHOICES[titleChoice],
+            box: titleBox,
+            height: titleBox[3] - titleBox[1],
+            words: [syntheticWord],
+            cell: titleCell,
+            run: { start: 0, end: 1 },
+            limit: { left: titleCell.x0, right: titleCell.x1 },
+            compact: true,
+            forceRedraw: true,
+          },
+        ])
+      }
+    }
+  }
+
+  const allPlans = planGroups.flat().filter((plan) => !plan.drop)
+  const categoryPlans = allPlans.filter((plan) => plan.categoryLabel)
+  const categoryLeft = categoryPlans.length
+    ? Math.min(
+        categoryPlans[0].cell.x1 - RENDER.padX,
+        Math.max(
+          categoryPlans[0].cell.x0 + RENDER.padX,
+          ...categoryPlans.map((plan) => {
+            const preceding = plan.run ? plan.words.slice(0, plan.run.start) : []
+            return preceding.length
+              ? preceding[preceding.length - 1].bbox.x1 + RENDER.padX
+              : plan.cell.x0 + RENDER.padX
+          }),
+        ),
+      )
+    : null
+  const limitsFor = (plan) =>
+    plan.limit ||
+    limitRange(
+      plan.words,
+      plan.run ? plan.run.start : 0,
+      plan.run ? plan.run.end : plan.words.length,
+      plan.cell,
+    )
+  const availableFor = (plan, left) => limitsFor(plan).right - RENDER.padX - left
+
+  let categoryFontSize = null
+  if (categoryPlans.length) {
+    const rows = categoryPlans.map((plan) => ({
+      plan,
+      height: categoryRowHeight(imageData, plan.box, plan.cell),
+    }))
+    categoryFontSize = Math.min(
+      RENDER.maxFont,
+      ...rows.map(({ plan, height }) =>
+        Math.round((height || plan.box[3] - plan.box[1]) * 0.34),
+      ),
+    )
+    while (
+      categoryFontSize > RENDER.minFont &&
+      rows.some(
+        ({ plan }) =>
+          measure(plan.text, categoryFontSize) > availableFor(plan, categoryLeft),
+      )
+    ) {
+      categoryFontSize -= 1
+    }
+  }
+
+  const headerPlans = allPlans.filter((plan) => plan.panelHeader)
+  let headerFontSize = null
+  if (headerPlans.length) {
+    headerFontSize = Math.min(
+      RENDER.maxFont,
+      ...headerPlans.map((plan) => Math.round((plan.box[3] - plan.box[1]) * 0.95)),
+    )
+    while (
+      headerFontSize > RENDER.minFont &&
+      headerPlans.some(
+        (plan) =>
+          measure(plan.text, headerFontSize) >
+          availableFor(plan, limitsFor(plan).left + RENDER.padX),
+      )
+    ) {
+      headerFontSize -= 1
+    }
+  }
+
+  for (const plans of planGroups) {
     for (const plan of plans) {
       if (plan.drop) continue
       const run = plan.run
-      const limits =
-        plan.limit ||
-        limitRange(plan.words, run ? run.start : 0, run ? run.end : plan.words.length, plan.cell)
+      const limits = limitsFor(plan)
       const height = plan.height || plan.box[3] - plan.box[1]
-      const rowHeight = plan.categoryLabel
-        ? categoryRowHeight(imageData, plan.box, plan.cell)
-        : null
-
       const fontFactor = plan.kind === 'date'
         ? plan.dateType === 'update' ? 0.7 : 1
         : plan.legendLabel
           ? 0.95
           : plan.compactHeader
-            ? equalizeHeaderFont ? 0.95 : 0.9
+            ? 0.95
           : plan.categoryLabel
-            ? rowHeight ? 0.34 : 0.95
+            ? 0.34
         : plan.compact
           ? 1.2
           : RENDER.fontFactor
@@ -381,25 +528,29 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
         plan.kind === 'date' && plan.dateType === 'monthYear'
           ? Math.round(panelHeight * 0.07)
           : RENDER.minFont
-      let size = Math.max(Math.round((rowHeight || height) * fontFactor), panelDateSize)
+      let size = plan.panelHeader
+        ? headerFontSize
+        : plan.categoryLabel
+          ? categoryFontSize
+          : Math.max(Math.round(height * fontFactor), panelDateSize)
       size = Math.max(RENDER.minFont, Math.min(RENDER.maxFont, size))
       const textLeft = Math.max(
-        limits.left + RENDER.padX,
+        plan.categoryLabel ? categoryLeft : limits.left + RENDER.padX,
         plan.legendLabel ? plan.box[0] : -Infinity,
       )
       const textRight = limits.right - RENDER.padX
       const available = Math.max(24, textRight - textLeft)
-      while (size > RENDER.minFont && measure(plan.text, size) > available) size -= 1
+      if (!plan.panelHeader && !plan.categoryLabel) {
+        while (size > RENDER.minFont && measure(plan.text, size) > available) size -= 1
+      }
 
       const targetWidth = measure(plan.text, size)
       if (targetWidth > available) continue
       const centre = plan.legendLabel
         ? Math.max((plan.box[0] + plan.box[2]) / 2, textLeft + targetWidth / 2)
         : (plan.box[0] + plan.box[2]) / 2
-      const textX = leftAlignCategoryLabels && plan.categoryLabel
-        // Rata kiri: teks ditempel pada textLeft, sehingga huruf pertama semua
-        // baris kategori berada di posisi x yang sama.
-        ? Math.min(textLeft + targetWidth / 2, textRight - targetWidth / 2)
+      const textX = plan.categoryLabel
+        ? textLeft + targetWidth / 2
         : Math.max(
             textLeft + targetWidth / 2,
             Math.min(centre, textRight - targetWidth / 2),
@@ -413,6 +564,7 @@ export function planPanelEdits({ lines, imageData, cells, panelHeight, measure, 
         .join(' ')
       const letters = (value) => value.replace(/[^A-Za-z]/g, '').toLowerCase()
       if (
+        !plan.forceRedraw &&
         !plan.compactHeader &&
         !plan.categoryLabel &&
         !(plan.kind === 'date' && plan.dateType === 'monthYear') &&

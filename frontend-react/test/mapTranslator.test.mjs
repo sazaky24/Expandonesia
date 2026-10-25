@@ -464,7 +464,7 @@ test('HIGH labels are normalized and month-year dates are not undersized', () =>
   assert.deepEqual(Array.from(borderPixel.slice(0, 3)), [0, 0, 0], 'HIGH redraw must preserve the row border')
 })
 
-test('HIGH font scales with the actual table-row height', () => {
+test('category labels share a left edge and font size across row heights', () => {
   const width = 800
   const height = 400
   const imageData = { data: new Uint8ClampedArray(width * height * 4).fill(255), width, height }
@@ -481,10 +481,23 @@ test('HIGH font scales with the actual table-row height', () => {
   const { edits } = planPanelEdits({
     lines: [
       {
-        words: [{ text: 'TINGGI', bbox: { x0: 320, y0: 120, x1: 390, y1: 140 }, confidence: 95 }],
+        words: [
+          { text: '0 - 100', bbox: { x0: 275, y0: 120, x1: 335, y1: 140 }, confidence: 95 },
+          { text: 'RENDAH', bbox: { x0: 340, y0: 120, x1: 390, y1: 140 }, confidence: 95 },
+        ],
       },
       {
-        words: [{ text: 'TINGGI', bbox: { x0: 320, y0: 260, x1: 390, y1: 280 }, confidence: 95 }],
+        words: [
+          { text: '100 - 200', bbox: { x0: 275, y0: 180, x1: 345, y1: 200 }, confidence: 95 },
+          { text: 'SEDANG', bbox: { x0: 350, y0: 180, x1: 400, y1: 200 }, confidence: 95 },
+        ],
+      },
+      {
+        words: [
+          { text: '200 - 300', bbox: { x0: 275, y0: 260, x1: 340, y1: 280 }, confidence: 95 },
+          { text: 'SANGAT', bbox: { x0: 345, y0: 260, x1: 395, y1: 280 }, confidence: 95 },
+          { text: 'TINGGI', bbox: { x0: 398, y0: 260, x1: 450, y1: 280 }, confidence: 95 },
+        ],
       },
     ],
     imageData,
@@ -493,10 +506,126 @@ test('HIGH font scales with the actual table-row height', () => {
     measure: (text, size) => text.length * size * 0.55,
   })
 
-  const highEdits = edits.filter((edit) => edit.text === 'HIGH')
-  assert.equal(highEdits.length, 2, 'both category labels should be translated')
+  const labels = edits.filter((edit) => ['LOW', 'MEDIUM', 'VERY HIGH'].includes(edit.text))
+  assert.equal(labels.length, 3, 'each category label should be translated')
+  assert.equal(new Set(labels.map((edit) => edit.size)).size, 1, 'category labels share one font size')
+  const leftEdges = labels.map((edit) => edit.textX - measureText(edit.text, edit.size) / 2)
+  assert.equal(new Set(leftEdges).size, 1, 'category labels share one left edge')
+})
+
+test('selected title replaces the translated title text', () => {
+  const width = 800
+  const height = 300
+  const imageData = { data: new Uint8ClampedArray(width * height * 4).fill(255), width, height }
+  const { edits, stats } = planPanelEdits({
+    lines: [
+      {
+        words: [
+          { text: 'PETA', bbox: { x0: 70, y0: 50, x1: 120, y1: 75 }, confidence: 95 },
+          { text: 'PRAKIRAAN', bbox: { x0: 125, y0: 50, x1: 220, y1: 75 }, confidence: 95 },
+          { text: 'CURAH', bbox: { x0: 225, y0: 50, x1: 280, y1: 75 }, confidence: 95 },
+          { text: 'HUJAN', bbox: { x0: 285, y0: 50, x1: 340, y1: 75 }, confidence: 95 },
+        ],
+      },
+    ],
+    imageData,
+    cells: [{ index: 0, x0: 50, x1: 450 }],
+    panelHeight: 300,
+    measure: (text, size) => text.length * size * 0.55,
+    options: { titleChoice: 'precipitation-anomaly-forecast' },
+  })
+
+  assert.ok(stats.title, 'the selected title counts as a title edit')
   assert.ok(
-    highEdits[1].size >= highEdits[0].size * 1.7,
-    `font should grow with the taller row: ${highEdits.map((edit) => edit.size)}`,
+    edits.some((edit) => edit.text === 'PRECIPITATION ANOMALY FORECAST MAP'),
+    `selected title missing: ${JSON.stringify(edits)}`,
   )
 })
+
+test('selected title replaces an existing English title', () => {
+  const width = 800
+  const height = 300
+  const imageData = { data: new Uint8ClampedArray(width * height * 4).fill(255), width, height }
+  const { edits } = planPanelEdits({
+    lines: [
+      {
+        words: [
+          { text: 'PRECIPITATION', bbox: { x0: 70, y0: 50, x1: 200, y1: 75 }, confidence: 95 },
+          { text: 'ANOMALY', bbox: { x0: 205, y0: 50, x1: 290, y1: 75 }, confidence: 95 },
+          { text: 'MAP', bbox: { x0: 295, y0: 50, x1: 340, y1: 75 }, confidence: 95 },
+        ],
+      },
+    ],
+    imageData,
+    cells: [{ index: 0, x0: 50, x1: 450 }],
+    panelHeight: 300,
+    measure: (text, size) => text.length * size * 0.55,
+    options: { titleChoice: 'precipitation-forecast' },
+  })
+
+  assert.ok(
+    edits.some((edit) => edit.text === 'PRECIPITATION FORECAST MAP'),
+    `selected title should replace an English title: ${JSON.stringify(edits)}`,
+  )
+})
+
+test('selected title is drawn in the title cell when OCR does not detect a title', () => {
+  const width = 800
+  const height = 400
+  const panelTop = 100
+  const imageData = { data: new Uint8ClampedArray(width * height * 4).fill(255), width, height }
+  const { edits, stats } = planPanelEdits({
+    lines: [],
+    imageData,
+    cells: [{ index: 0, x0: 50, x1: 450 }],
+    panelHeight: 300,
+    panelTop,
+    measure: (text, size) => text.length * size * 0.55,
+    options: { titleChoice: 'precipitation-analysis' },
+  })
+
+  const title = edits.find((edit) => edit.text === 'PRECIPITATION ANALYSIS MAP')
+  assert.ok(title, 'selected title should be drawn even with no title OCR')
+  assert.ok(stats.title, 'the fallback title counts as a title edit')
+  assert.ok(title.box[1] >= panelTop, 'fallback title stays inside the title panel')
+  assert.ok(title.box[3] <= panelTop + 0.27 * 300, 'fallback title stays above date and logo content')
+})
+
+for (const headerText of ['PRECIPITATION', 'ANOMALY']) {
+  test(`${headerText} and LEGEND headers use one font size`, () => {
+    const width = 800
+    const height = 200
+    const imageData = { data: new Uint8ClampedArray(width * height * 4).fill(255), width, height }
+    const { edits } = planPanelEdits({
+      lines: [
+        {
+          words: [
+            { text: headerText, bbox: { x0: 300, y0: 30, x1: 430, y1: 50 }, confidence: 95 },
+            { text: '(mm):', bbox: { x0: 435, y0: 30, x1: 480, y1: 50 }, confidence: 95 },
+          ],
+        },
+        {
+          words: [{ text: 'LEGEND', bbox: { x0: 550, y0: 25, x1: 680, y1: 65 }, confidence: 95 }],
+        },
+      ],
+      imageData,
+      cells: [
+        { index: 0, x0: 20, x1: 250 },
+        { index: 1, x0: 260, x1: 510 },
+        { index: 2, x0: 520, x1: 750 },
+      ],
+      panelHeight: 200,
+      measure: (text, size) => text.length * size * 0.55,
+    })
+
+    const tableHeader = edits.find((edit) => edit.text === `${headerText} (mm):`)
+    const legendHeader = edits.find((edit) => edit.text === 'LEGEND')
+    assert.ok(tableHeader, `${headerText} header should be redrawn`)
+    assert.ok(legendHeader, 'legend header should be redrawn')
+    assert.equal(legendHeader.size, tableHeader.size, 'both headers use one font size')
+  })
+}
+
+function measureText(text, size) {
+  return text.length * size * 0.55
+}

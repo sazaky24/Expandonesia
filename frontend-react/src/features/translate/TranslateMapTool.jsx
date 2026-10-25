@@ -11,28 +11,30 @@ const MAX_BYTES = 25 * 1024 * 1024
 
 const STORAGE_MAP_KEY = 'expandonesia.mapOptions'
 
-const DEFAULT_MAIN = 'prediksi'
-const DEFAULT_SUB = 'analisis'
-
-const SUB_OPTIONS = ['analisis', 'anomali']
+const DEFAULT_TITLE = 'auto'
+const TITLE_OPTIONS = [
+  ['auto', 'Deteksi judul otomatis'],
+  ['precipitation-forecast', 'Precipitation Forecast Map'],
+  ['precipitation-anomaly-forecast', 'Precipitation Anomaly Forecast Map'],
+  ['precipitation-analysis', 'Precipitation Analysis Map'],
+  ['precipitation-anomaly', 'Precipitation Anomaly Map'],
+]
+const TITLE_OPTION_VALUES = new Set(TITLE_OPTIONS.map(([value]) => value))
 
 function readStoredMapOptions() {
   try {
     const raw = window.localStorage.getItem(STORAGE_MAP_KEY)
-    if (!raw) return { main: DEFAULT_MAIN, sub: DEFAULT_SUB }
+    if (!raw) return DEFAULT_TITLE
     const parsed = JSON.parse(raw)
-    return {
-      main: parsed.main === 'aktual' ? 'aktual' : DEFAULT_MAIN,
-      sub: parsed.sub || DEFAULT_SUB,
-    }
+    return TITLE_OPTION_VALUES.has(parsed.title) ? parsed.title : DEFAULT_TITLE
   } catch {
-    return { main: DEFAULT_MAIN, sub: DEFAULT_SUB }
+    return DEFAULT_TITLE
   }
 }
 
-function storeMapOptions({ main, sub }) {
+function storeMapOptions(title) {
   try {
-    window.localStorage.setItem(STORAGE_MAP_KEY, JSON.stringify({ main, sub }))
+    window.localStorage.setItem(STORAGE_MAP_KEY, JSON.stringify({ title }))
   } catch {
     /* ignore */
   }
@@ -46,8 +48,7 @@ export default function TranslateMapTool({ notify }) {
   const [view, setView] = useState('result') // 'original' | 'result'
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [mainChoice, setMainChoice] = useState(() => readStoredMapOptions().main)
-  const [subChoice, setSubChoice] = useState(() => readStoredMapOptions().sub)
+  const [titleChoice, setTitleChoice] = useState(readStoredMapOptions)
 
   useEffect(
     () => () => {
@@ -65,8 +66,8 @@ export default function TranslateMapTool({ notify }) {
 
   // Persist map options whenever they change.
   useEffect(() => {
-    storeMapOptions({ main: mainChoice, sub: subChoice })
-  }, [mainChoice, subChoice])
+    storeMapOptions(titleChoice)
+  }, [titleChoice])
 
   // Read the pixel size locally to show useful source-image details.
   useEffect(() => {
@@ -123,14 +124,7 @@ export default function TranslateMapTool({ notify }) {
 
     try {
       // 100% client-side: OCR + rewrite run in this tab (see src/lib/localMap.js).
-      const subOptions = SUB_OPTIONS
-      const options = {
-        main: mainChoice,
-        sub: subChoice,
-        subOptions,
-        equalizeHeaderFont: true,
-        leftAlignCategoryLabels: true,
-      }
+      const options = { titleChoice }
       const { blob } = await remasterMapLocally(file, (pct) => {
         setProgress(pct)
       }, options)
@@ -236,77 +230,24 @@ export default function TranslateMapTool({ notify }) {
 
         {file ? (
           <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-            <div className="mb-2 text-[12px] font-semibold text-slate-900">Pilihan utama</div>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <label
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                  mainChoice === 'prediksi'
-                    ? 'border-blue-300 bg-blue-50 text-blue-700'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                }`}
-                onClick={() => {
-                  setMainChoice('prediksi')
-                  setSubChoice('prediksi')
-                }}
-              >
-                <input type="radio" name="map-main" value="prediksi" readOnly />
-                Prediksi
-              </label>
-              <label
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl border py-3 text-sm font-semibold transition-colors ${
-                  mainChoice === 'aktual'
-                    ? 'border-blue-300 bg-blue-50 text-blue-700'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                }`}
-                onClick={() => {
-                  setMainChoice('aktual')
-                  setSubChoice(DEFAULT_SUB)
-                }}
-              >
-                <input type="radio" name="map-main" value="aktual" readOnly />
-                Aktual
-              </label>
-            </div>
-
-            <div className="mb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              Sub-pilihan
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {SUB_OPTIONS.map((sub) => (
-                <label
-                  key={sub}
-                  className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-xs font-semibold transition-colors ${
-                    subChoice === sub
-                      ? 'border-blue-300 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                  }`}
-                  onClick={() => setSubChoice(sub)}
-                >
-                  <input type="radio" name="map-sub" value={sub} readOnly />
-                  {sub}
-                </label>
+            <label
+              htmlFor="map-title"
+              className="mb-2 block text-[12px] font-semibold text-slate-900"
+            >
+              Judul peta
+            </label>
+            <select
+              id="map-title"
+              value={titleChoice}
+              onChange={(event) => setTitleChoice(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
+              {TITLE_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
               ))}
-            </div>
-
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <div className="mb-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Atur terjemahan</div>
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="rounded bg-slate-100 border-slate-400 text-blue-600 focus:ring-blue-500"
-                />
-                Ukuran font header (mm) sama dengan legend
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 mt-1">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="rounded bg-slate-100 border-slate-400 text-blue-600 focus:ring-blue-500"
-                />
-                Label kategori (HIGH / LOW / MEDIUM) rata kiri
-              </label>
-            </div>
+            </select>
           </div>
         ) : null}
       </StepCard>
@@ -402,4 +343,3 @@ export default function TranslateMapTool({ notify }) {
     </div>
   )
 }
-

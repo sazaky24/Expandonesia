@@ -282,6 +282,7 @@ export async function planMapTranslations(
     imageData,
     cells: panel.cells,
     panelHeight: panel.panelBottom - panel.panelTop,
+    panelTop: panel.panelTop,
     measure: measureText,
     options,
   })
