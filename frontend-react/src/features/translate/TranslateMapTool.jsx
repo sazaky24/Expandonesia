@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-
 import { ArrowRightLeft, Camera, Cpu, RotateCcw, Share2, Upload } from 'lucide-react'
 
 import { Pill, PrimaryButton, ProgressBar, StepCard } from '../../components/ui'
@@ -125,6 +124,9 @@ export default function TranslateMapTool({ notify }) {
     try {
       // 100% client-side: OCR + rewrite run in this tab (see src/lib/localMap.js).
       const options = { titleChoice }
+      
+      // Show confirmation when user explicitly selects a title (not 'auto')
+      // This ensures the user's title choice is respected
       const { blob } = await remasterMapLocally(file, (pct) => {
         setProgress(pct)
       }, options)
